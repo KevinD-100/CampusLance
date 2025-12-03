@@ -1,2 +1,2 @@
 # CampusLance
-A software platform that lets students list services, hire via bidding, review deliveries, request revisions, track progress and maintain organized portfolios, reducing scattered communication and improving collaboration.
+A software application that centralizes campus freelancing by allowing students to list their creative and technical services. It supports a structured hiring flow where clients can review delivered work and request improvements through revisions, enabling an iterative and transparent workflow. The system focuses on organized service showcasing, bid-based selection, collaborative task coordination, and portfolio-based achievement highlights for enhanced engagement.
