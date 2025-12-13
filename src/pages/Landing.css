@@ -12,17 +12,18 @@
 
 /* Container with Background Image */
 .landing-container {
-  /* High quality campus/tech background */
   background: linear-gradient(rgba(44, 62, 80, 0.85), rgba(44, 62, 80, 0.7)), 
               url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2000&auto=format&fit=crop');
   background-size: cover;
   background-position: center;
   background-attachment: fixed; /* Parallax effect */
-  min-height: 100vh;
+   height: 100vh; 
+  overflow: hidden; 
   display: flex;
   flex-direction: column;
   color: white;
   font-family: 'Inter', sans-serif;
+  margin: 0; padding: 0;
 }
 
 /* Navbar */

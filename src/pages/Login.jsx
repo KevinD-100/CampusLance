@@ -4,7 +4,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
 import './Auth.css';
 import commonAuthImage from '../assets/login-bg2.png'; // Ensure this file exists
-
+const authImage = "https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000&auto=format&fit=crop"; 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
@@ -21,7 +21,7 @@ const Login = () => {
         
         {/* LEFT: Image fits perfectly due to object-fit: cover in CSS */}
         <div className="auth-visual">
-          <img src={commonAuthImage} alt="CampusLance" className="auth-img" />
+          <img src={authImage} alt="CampusLance" className="auth-img" />
         </div>
 
         {/* RIGHT: Form */}

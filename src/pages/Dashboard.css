@@ -362,3 +362,107 @@
   border: 1px solid #B2F5EA;
   font-weight: 700;
 }
+.tabs-container {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #E2E8F0;
+  padding-bottom: 10px;
+}
+
+.tab-btn {
+  background: none;
+  border: none;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #718096;
+  padding: 10px 20px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.tab-btn:hover { background: #F7FAFC; color: #2D3748; }
+
+.tab-btn.active {
+  background: #E6FFFA;
+  color: #2C7A7B;
+  border-bottom: 3px solid #38B2AC; /* Active indicator */
+  border-radius: 8px 8px 0 0;
+}
+
+/* EXPLORE GIGS GRID */
+.gigs-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 25px;
+}
+
+.gig-card {
+  background: white;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  border: 1px solid #F1F5F9;
+  position: relative;
+  transition: transform 0.2s;
+}
+
+.gig-card:hover { transform: translateY(-5px); }
+
+.gig-img { width: 100%; height: 160px; object-fit: cover; }
+.gig-info { padding: 15px; }
+
+.gig-cat { font-size: 0.75rem; color: #718096; text-transform: uppercase; font-weight: 700; margin-bottom: 5px; }
+.gig-card h4 { margin: 0 0 10px 0; font-size: 1rem; color: #2D3748; }
+
+.gig-meta { display: flex; justify-content: space-between; font-size: 0.85rem; color: #4A5568; margin-bottom: 15px; }
+.gig-footer { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #EDF2F7; padding-top: 10px; }
+.gig-price { font-weight: 800; font-size: 1.1rem; color: #2D3748; }
+
+.fav-btn {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: rgba(255,255,255,0.9);
+  border: none;
+  border-radius: 50%;
+  width: 30px; height: 30px;
+  cursor: pointer;
+  color: #E53E3E;
+  font-size: 1.2rem;
+}
+
+/* SEARCH & FILTERS */
+.filter-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+.search-input { flex: 1; padding: 10px; border: 1px solid #E2E8F0; border-radius: 8px; }
+.filter-select { padding: 10px; border: 1px solid #E2E8F0; border-radius: 8px; background: white; }
+
+/* JOB POSTS & BIDS */
+.job-card-expanded {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #E2E8F0;
+}
+
+.job-header { display: flex; justify-content: space-between; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+.post-date { display: block; font-size: 0.8rem; color: #A0AEC0; margin-top: 5px; }
+.budget-tag { background: #EDF2F7; padding: 5px 10px; border-radius: 6px; font-weight: 600; height: fit-content; }
+
+.bid-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #F8FAFC;
+  padding: 15px;
+  border-radius: 10px;
+  margin-bottom: 10px;
+}
+
+.bid-info p { margin: 5px 0 0 0; font-size: 0.9rem; color: #4A5568; font-style: italic; }
+.bid-action { display: flex; align-items: center; gap: 15px; }
+.bid-price { font-weight: 700; color: #2D3748; font-size: 1.1rem; }
+
+/* Animation Utility */
+.animate-fade-in { animation: fadeIn 0.5s ease-out; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

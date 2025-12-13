@@ -3,10 +3,8 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 import { jwtDecode } from "jwt-decode";
 import './Auth.css';
-
-// Importing the shared image
 import commonAuthImage from '../assets/login-bg.png';
-
+const authImage = "https://images.unsplash.com/photo-1523240795612-9a054b0db644?q=80&w=1000&auto=format&fit=crop";
 const Register = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,11 +23,7 @@ const Register = () => {
         
         {/* LEFT SIDE: IMAGE */}
         <div className="auth-visual">
-          <img 
-            src={commonAuthImage} 
-            alt="CampusLance" 
-            className="auth-img" 
-          />
+          <img src={authImage} alt="CampusLance" className="auth-img" />
         </div>
 
         {/* RIGHT SIDE: FORM */}
