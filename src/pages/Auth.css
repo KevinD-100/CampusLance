@@ -1,0 +1,161 @@
+/* Center the card on the screen */
+.auth-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  padding: 20px;
+  background: linear-gradient(135deg, rgba(44, 62, 80, 0.8), rgba(72, 187, 120, 0.4)),
+              url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2000&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+/* COMPACT CARD SIZE */
+.auth-card {
+  display: flex;
+  width: 100%;
+  max-width: 950px; /* Reduced from 1200px */
+  height: 600px;    /* Reduced from 700px */
+  background: var(--card-white);
+  border-radius: 25px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+/* LEFT SIDE: IMAGE (Fits perfectly now) */
+.auth-visual {
+  flex: 1; /* Equal width to form */
+  background-color: #E6FFFA;
+  position: relative;
+  overflow: hidden;
+}
+
+.auth-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* This forces the image to resize/crop to fit the box */
+  object-position: center;
+  display: block;
+}
+
+/* RIGHT SIDE: FORM */
+.auth-form-container {
+  flex: 1;
+  padding: 2.5rem; /* Reduced padding */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+/* Typography */
+.auth-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 0.25rem;
+}
+
+.auth-subtitle {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+/* Input Fields */
+.form-group {
+  width: 100%;
+  margin-bottom: 0.85rem;
+  text-align: left;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-main);
+  margin-bottom: 4px;
+  font-weight: 700;
+  margin-left: 5px;
+}
+
+.custom-input {
+  width: 100%;
+  padding: 12px 16px;
+  background-color: var(--input-bg);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: all 0.2s;
+  box-sizing: border-box; /* Fixes width issues */
+}
+
+.custom-input:focus {
+  background-color: #fff;
+  border-color: #CBD5E0;
+  box-shadow: 0 0 0 3px rgba(66, 153, 225, 0.1);
+}
+
+/* Button */
+.btn-dark {
+  width: 100%;
+  padding: 12px;
+  background-color: var(--btn-dark);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 0.5rem;
+}
+
+/* Divider */
+.divider {
+  margin: 1.2rem 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.divider::before, .divider::after {
+  content: "";
+  flex: 1;
+  border-bottom: 1px solid #E2E8F0;
+}
+.divider span {
+  padding: 0 10px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* GOOGLE LOGIN FIX */
+.social-login {
+  width: 100%;
+  display: flex;
+  justify-content: center; /* Centers the button */
+  align-items: center;
+  min-height: 40px; /* Ensures height so it doesn't collapse */
+}
+
+/* Footer */
+.auth-footer-text {
+  margin-top: 1rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.auth-footer-text a {
+  color: var(--text-main);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .auth-card { flex-direction: column; height: auto; max-width: 400px; }
+  .auth-visual { height: 150px; flex: none; }
+  .auth-form-container { padding: 1.5rem; }
+}

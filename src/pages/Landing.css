@@ -1,0 +1,160 @@
+/* Animation Keyframes */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+/* Container with Background Image */
+.landing-container {
+  /* High quality campus/tech background */
+  background: linear-gradient(rgba(44, 62, 80, 0.85), rgba(44, 62, 80, 0.7)), 
+              url('https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2000&auto=format&fit=crop');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed; /* Parallax effect */
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  color: white;
+  font-family: 'Inter', sans-serif;
+}
+
+/* Navbar */
+.landing-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 2rem 5%;
+  animation: fadeInUp 0.8s ease-out;
+}
+
+.brand-logo {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -1px;
+}
+
+.nav-btn {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  padding: 10px 25px;
+  border-radius: 30px;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.nav-btn:hover {
+  background: white;
+  color: var(--text-main);
+  transform: translateY(-2px);
+}
+
+/* Hero Section */
+.landing-hero {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  padding: 20px;
+  animation: fadeInUp 1s ease-out;
+}
+
+.hero-heading {
+  font-size: 4.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 1.5rem;
+  text-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+
+.hero-heading span {
+  color: #A3BFB6; /* Sage Green highlight */
+  font-style: italic;
+}
+
+.hero-sub {
+  font-size: 1.25rem;
+  color: #E2E8F0;
+  max-width: 700px;
+  margin-bottom: 4rem;
+  line-height: 1.6;
+  font-weight: 300;
+}
+
+/* Glassmorphism Cards */
+.role-cards {
+  display: flex;
+  gap: 30px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.role-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 2.5rem;
+  border-radius: 24px;
+  width: 280px;
+  cursor: pointer;
+  transition: all 0.4s ease;
+  text-align: left;
+  animation: fadeInUp 1.2s ease-out; /* Delays appearance */
+}
+
+.role-card:hover {
+  background: rgba(255, 255, 255, 0.95);
+  transform: translateY(-15px); /* Lift effect */
+  box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+}
+
+/* Change text color on hover */
+.role-card:hover h3, .role-card:hover p, .role-card:hover .role-icon {
+  color: var(--text-main);
+}
+
+.role-icon {
+  font-size: 2.5rem;
+  margin-bottom: 1.5rem;
+  display: block;
+  animation: float 3s ease-in-out infinite;
+}
+
+.role-card h3 {
+  margin: 0 0 0.5rem 0;
+  color: #fff;
+  font-size: 1.5rem;
+}
+
+.role-card p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #CBD5E0;
+  line-height: 1.5;
+}
+
+.arrow-icon {
+  margin-top: 20px;
+  font-size: 1.5rem;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: all 0.3s;
+}
+
+.role-card:hover .arrow-icon {
+  opacity: 1;
+  transform: translateX(0);
+  color: var(--btn-dark);
+}

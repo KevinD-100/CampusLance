@@ -1,0 +1,36 @@
+:root {
+  /* SAGE GREEN THEME */
+  --bg-sage: #9AB0A8;         /* Main Background - Dusty Sage */
+  --bg-sage-light: #C4D6D0;   /* Lighter Sage for accents */
+  --card-white: #FFFFFF;      
+  
+  /* Text Colors */
+  --text-main: #2C3E50;       /* Dark Charcoal */
+  --text-muted: #8898AA;      /* Light Gray text */
+  
+  /* Buttons */
+  --btn-dark: #2D3748;        /* Dark button from your image */
+  --btn-hover: #1A202C;
+  
+  /* Inputs */
+  --input-bg: #F0F4F8;        /* Very light blue-gray for inputs */
+  --input-border: transparent; /* No border for the clean look */
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Inter', sans-serif;
+  background-color: var(--bg-sage); /* Applies Green to whole app */
+  color: var(--text-main);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Global Reset */
+* {
+  box-sizing: border-box;
+}
+
+button {
+  font-family: inherit;
+}

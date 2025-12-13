@@ -1,0 +1,90 @@
+.form-page-container {
+  min-height: 100vh;
+  background-color: #F0F4F8;
+  display: flex;
+  justify-content: center;
+  padding: 40px 20px;
+}
+
+.form-card {
+  background: white;
+  width: 100%;
+  max-width: 700px;
+  border-radius: 20px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+  padding: 40px;
+  animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.form-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.form-header h2 { font-size: 2rem; color: #2C3E50; margin-bottom: 10px; }
+.form-header p { color: #8898AA; }
+
+.form-section { margin-bottom: 20px; }
+
+.form-label {
+  display: block;
+  font-weight: 600;
+  color: #2D3748;
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+}
+
+.form-input, .form-textarea, .form-select {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #E2E8F0;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-family: inherit;
+  transition: all 0.2s;
+  background-color: #FAFCFE;
+}
+
+.form-input:focus, .form-textarea:focus {
+  border-color: #9AB0A8; /* Sage Green */
+  background: white;
+  outline: none;
+}
+
+.form-textarea { resize: vertical; min-height: 120px; }
+
+.row-split { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+.submit-btn {
+  width: 100%;
+  padding: 15px;
+  background: #2D3748;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+
+.submit-btn:hover { background: #1A202C; }
+
+.back-btn {
+  background: transparent;
+  border: none;
+  color: #718096;
+  cursor: pointer;
+  margin-bottom: 20px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.back-btn:hover { color: #2D3748; }
