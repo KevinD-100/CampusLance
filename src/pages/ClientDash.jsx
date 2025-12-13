@@ -9,7 +9,7 @@ const ClientDash = ({ user }) => {
   // --- MOCK DATA FOR DEMO ---
   const gigs = [
     { id: 1, title: "React Website Development", freelancer: "Kevin Daniel", price: 1500, rating: 4.8, category: "Tech", img: "https://images.unsplash.com/photo-1633356122544-f134324a6cee?w=400" },
-    { id: 2, title: "Event Poster Design", freelancer: "Sarah L.", price: 300, rating: 4.9, category: "Creative", img: "https://images.unsplash.com/photo-1626785774573-4b7993143a2d?w=400" },
+    { id: 2, title: "Event Poster Design", freelancer: "Sarah L.", price: 300, rating: 4.9, category: "Creative", img: "https://images.unsplash.com/photo-1557672172-298e090bd0f1?q=80&w=600&auto=format&fit=crop"  },
     { id: 3, title: "Python Data Analysis Script", freelancer: "Arun K.", price: 800, rating: 4.5, category: "Tech", img: "https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=400" },
   ];
 

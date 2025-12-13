@@ -466,3 +466,99 @@
 /* Animation Utility */
 .animate-fade-in { animation: fadeIn 0.5s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* --- SKILL SCORE CARD --- */
+.skill-score-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  margin-bottom: 25px;
+  border: 1px solid #E2E8F0;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+}
+
+.score-circle {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: conic-gradient(#48BB78 92%, #EDF2F7 0); /* Visual chart effect */
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: #2D3748;
+}
+
+.score-circle span { font-weight: 800; font-size: 1.2rem; line-height: 1; }
+.score-circle small { font-size: 0.65rem; color: #718096; }
+
+.score-info h4 { margin: 0 0 5px 0; font-size: 1rem; }
+.score-info p { margin: 0 0 10px 0; font-size: 0.85rem; color: #718096; }
+
+/* --- VERTICAL GIG ROW (For Management) --- */
+.gigs-list-vertical { display: flex; flex-direction: column; gap: 15px; }
+
+.gig-row-card {
+  display: flex;
+  align-items: center;
+  background: white;
+  padding: 15px;
+  border-radius: 12px;
+  border: 1px solid #F1F5F9;
+  gap: 15px;
+}
+
+.gig-row-card img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; }
+.gig-details { flex: 1; }
+.gig-details h4 { margin: 0 0 5px 0; font-size: 1rem; color: #2D3748; }
+.gig-details p { margin: 0; font-size: 0.85rem; color: #64748B; }
+
+.gig-actions { display: flex; gap: 10px; }
+
+/* --- CLIENT REQUEST CARDS (Bidding) --- */
+.requests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+}
+
+.request-card {
+  background: white;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid #E2E8F0;
+  transition: transform 0.2s;
+}
+
+.request-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+
+.req-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+.req-header h4 { margin: 0; font-size: 1rem; color: #2D3748; max-width: 70%; }
+
+.budget-badge { 
+  background: #EDF2F7; 
+  padding: 4px 8px; 
+  border-radius: 6px; 
+  font-weight: 700; 
+  font-size: 0.85rem; 
+  height: fit-content; 
+  color: #2D3748;
+}
+
+.req-client { font-size: 0.8rem; color: #718096; margin-bottom: 15px; }
+
+.tags-row { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+.skill-tag { 
+  background: #F0FFF4; 
+  color: #276749; 
+  border: 1px solid #C6F6D5; 
+  padding: 3px 8px; 
+  border-radius: 4px; 
+  font-size: 0.75rem; 
+  font-weight: 600; 
+}
+
+.req-footer { margin-top: auto; }
