@@ -9,10 +9,35 @@ const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
 
-  const handleGoogleSuccess = (credentialResponse) => {
+  const handleGoogleSuccess = async (credentialResponse) => {
     const decoded = jwtDecode(credentialResponse.credential);
-    localStorage.setItem('campusUser', JSON.stringify(decoded));
-    navigate('/dashboard');
+    console.log("Google Info:", decoded);
+
+    try {
+      // 👇 SEND LOGIN REQUEST TO BACKEND
+      const res = await fetch('http://localhost:5000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: decoded.name,
+            email: decoded.email,
+            // Role doesn't matter for login, backend handles looking it up
+        }),
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        console.log("DB Login Success:", data);
+        localStorage.setItem('campusUser', JSON.stringify(data.user));
+        navigate('/dashboard');
+      } else {
+        alert("Login Failed: " + data.error);
+      }
+    } catch (error) {
+       console.error("Network Error:", error);
+       alert("Cannot connect to Backend Server on Port 5000");
+    }
   };
 
   return (

@@ -10,11 +10,35 @@ const Register = () => {
   const location = useLocation();
   const role = location.state?.role || 'freelancer';
 
-  const handleGoogleSuccess = (credentialResponse) => {
+  const handleGoogleSuccess = async (credentialResponse) => {
     const decoded = jwtDecode(credentialResponse.credential);
-    console.log(`Registering as ${role}`, decoded);
-    localStorage.setItem('campusUser', JSON.stringify(decoded));
-    navigate('/dashboard');
+    console.log("Google Info:", decoded);
+  
+   try {
+      const res = await fetch('http://localhost:5000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            name: decoded.name,
+            email: decoded.email,
+            role: role // Sending the selected role (freelancer/client)
+        }),
+      });
+
+      const data = await res.json();
+      
+      if (res.ok) {
+        console.log("Saved to DB:", data);
+        // Save the USER data received from Database (which has the real ID)
+        localStorage.setItem('campusUser', JSON.stringify(data.user));
+        navigate('/dashboard');
+      } else {
+        alert("Registration Failed: " + data.error);
+      }
+    } catch (error) {
+       console.error("Network Error:", error);
+       alert("Cannot connect to Backend Server on Port 5000");
+    }
   };
 
   return (
