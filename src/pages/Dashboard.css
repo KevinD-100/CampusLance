@@ -562,3 +562,56 @@
 }
 
 .req-footer { margin-top: auto; }
+
+.sprint-card {
+  background: #F7FAFC;
+  padding: 15px;
+  border-radius: 12px;
+  border-left: 4px solid #48BB78;
+}
+
+.sprint-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sprint-stats {
+  list-style: none;
+  padding: 0;
+  margin: 15px 0;
+}
+
+.sprint-stats li {
+  margin-bottom: 8px;
+  font-size: 0.9rem;
+  color: #2D3748;
+}
+
+/* Timeline Visualization */
+.timeline-visual {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 10px;
+}
+
+.timeline-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.timeline-item .time {
+  width: 30px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #718096;
+}
+
+.timeline-item .bar {
+  height: 12px;
+  border-radius: 20px;
+  transition: width 1s ease-out;
+}
