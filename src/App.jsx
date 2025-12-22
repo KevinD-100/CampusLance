@@ -6,6 +6,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
 import CreateGig from './pages/CreateGig';        
 import PostRequirement from './pages/PostRequirement'; 
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   return (
@@ -14,6 +15,7 @@ function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/create-gig" element={<CreateGig />} />
       <Route path="/post-job" element={<PostRequirement />} />

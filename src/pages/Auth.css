@@ -101,6 +101,7 @@
   outline: none;
   transition: all 0.2s;
   box-sizing: border-box; /* Fixes width issues */
+  transition: border-color 0.3s ease, background-color 0.3s ease;
 }
 
 .custom-input:focus {
@@ -168,4 +169,49 @@
   .auth-card { flex-direction: column; height: auto; max-width: 400px; }
   .auth-visual { height: 150px; flex: none; }
   .auth-form-container { padding: 1.5rem; }
+}
+
+.message-box {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  text-align: center;
+  font-weight: 500;
+}
+
+.message-box.error {
+  background-color: #FED7D7;
+  color: #C53030;
+  border: 1px solid #FEB2B2;
+}
+
+.message-box.success {
+  background-color: #C6F6D5;
+  color: #276749;
+  border: 1px solid #9AE6B4;
+}
+
+.custom-input.invalid {
+  border-color: #E53E3E;
+  background-color: #FFF5F5;
+}
+
+/* The small red text below input */
+.field-error-text {
+  color: #E53E3E;
+  font-size: 0.75rem;
+  margin-top: 5px; /* Pull it closer to input */
+  margin-bottom: 10px;
+  text-align: left;
+  display: block;
+  font-weight: 500;
+}
+
+/* Disable button if form is invalid */
+.btn-dark:disabled {
+  background-color: #A0AEC0;
+  cursor: not-allowed;
+  opacity: 0.7;
 }

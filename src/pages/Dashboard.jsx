@@ -14,8 +14,15 @@ const Dashboard = () => {
 
   useEffect(() => {
     const loggedUser = JSON.parse(localStorage.getItem('campusUser'));
-    if (!loggedUser) navigate('/login');
-    setUser(loggedUser);
+    if (!loggedUser) {
+      navigate('/login');
+    } else {
+      setUser(loggedUser);
+      // 2. 👇 AUTOMATICALLY SET VIEW BASED ON DATABASE ROLE
+      if (loggedUser.role) {
+        setCurrentRole(loggedUser.role);
+      }
+    }
   }, [navigate]);
 
   return (
