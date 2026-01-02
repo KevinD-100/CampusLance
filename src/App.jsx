@@ -7,6 +7,9 @@ import Dashboard from './pages/Dashboard';
 import CreateGig from './pages/CreateGig';        
 import PostRequirement from './pages/PostRequirement'; 
 import ResetPassword from './pages/ResetPassword';
+import EditGig from './pages/EditGig'; 
+import UploadPortfolio from './pages/UploadPortfolio';
+import Profile from './pages/Profile';
 
 function App() {
   return (
@@ -19,6 +22,9 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/create-gig" element={<CreateGig />} />
       <Route path="/post-job" element={<PostRequirement />} />
+      <Route path="/edit-gig/:id" element={<EditGig />} />
+      <Route path="/upload-portfolio" element={<UploadPortfolio />} />
+      <Route path="/profile" element={<Profile />} />
     </Routes>
   );
 }

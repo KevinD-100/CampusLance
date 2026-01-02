@@ -9,62 +9,129 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   
-  // Default role. In real app, get this from database user.role
-  const [currentRole, setCurrentRole] = useState('freelancer');
+  // 'viewMode' determines which Dashboard to show (Freelancer vs Client)
+  // We set it to null initially to wait for data loading
+  const [viewMode, setViewMode] = useState(null); 
 
   useEffect(() => {
-    const loggedUser = JSON.parse(localStorage.getItem('campusUser'));
-    if (!loggedUser) {
+    // 1. Get Real User Data from Local Storage
+    const storedData = localStorage.getItem('campusUser');
+    
+    if (!storedData) {
+      // Security: If no user found, force login
       navigate('/login');
     } else {
-      setUser(loggedUser);
-      // 2. 👇 AUTOMATICALLY SET VIEW BASED ON DATABASE ROLE
-      if (loggedUser.role) {
-        setCurrentRole(loggedUser.role);
+      const parsedUser = JSON.parse(storedData);
+      setUser(parsedUser);
+      
+      // 2. Set Default View based on Database Role
+      // If viewMode isn't set yet, initialize it with their registered role
+      if (!viewMode) {
+        setViewMode(parsedUser.role || 'client');
       }
     }
-  }, [navigate]);
+  }, [navigate, viewMode]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('campusUser');
+    navigate('/login');
+  };
+
+  // 3. Toggle Logic: Switch between Buying and Selling views
+  const toggleViewMode = () => {
+    setViewMode(prevMode => prevMode === 'freelancer' ? 'client' : 'freelancer');
+  };
+
+  // Prevent rendering until user data is ready
+  if (!user || !viewMode) return null;
 
   return (
     <div className="dashboard-layout">
-      {/* Sidebar */}
+      
+      {/* ================= SIDEBAR ================= */}
       <aside className="sidebar">
         <div className="sidebar-logo">CAMPUSLANCE</div>
         
+        {/* 👇 ROLE SWITCHING BUTTON */}
+        {/* Only show this for standard users (Not Admins) */}
+        {user.role !== 'admin' && (
+          <div className="switch-container">
+            <button className="switch-btn" onClick={toggleViewMode}>
+              {viewMode === 'freelancer' ? '⇄ Switch to Buying' : '⇄ Switch to Selling'}
+            </button>
+          </div>
+        )}
+
         <div className="menu-group">
-          <p className="menu-label">MENU</p>
-          <div className="menu-item active">Overview</div>
-          <div className="menu-item">Messages <span className="msg-badge">2</span></div>
+          <p className="menu-label">MENU ({viewMode.toUpperCase()})</p>
+          
+          <div className="menu-item active">Dashboard</div>
+          <div className="menu-item">Messages</div>
+          
+          {/* 👇 FREELANCER SPECIFIC LINKS */}
+          {viewMode === 'freelancer' && (
+            <>
+              <div className="menu-item" onClick={() => navigate('/create-gig')}>+ Create Gig</div>
+              <div className="menu-item">My Gigs</div>
+              <div className="menu-item">Portfolio</div>
+            </>
+          )}
+
+          {/* 👇 CLIENT SPECIFIC LINKS */}
+          {viewMode === 'client' && (
+            <>
+              <div className="menu-item" onClick={() => navigate('/post-job')}>+ Post Requirement</div>
+              <div className="menu-item">Explore Gigs</div>
+              <div className="menu-item">My Orders</div>
+            </>
+          )}
+
+          {/* 👇 ADMIN SPECIFIC LINKS */}
+          {viewMode === 'admin' && (
+            <>
+              <div className="menu-item">User Management</div>
+              <div className="menu-item">Disputes</div>
+              <div className="menu-item">Platform Settings</div>
+            </>
+          )}
+
           <div className="menu-item">Settings</div>
         </div>
 
-        <div className="menu-group">
-          <p className="menu-label">VIEW MODE (DEMO)</p>
-          <button className={`role-select ${currentRole === 'freelancer' ? 'active' : ''}`} onClick={() => setCurrentRole('freelancer')}>Freelancer</button>
-          <button className={`role-select ${currentRole === 'client' ? 'active' : ''}`} onClick={() => setCurrentRole('client')}>Client</button>
-          <button className={`role-select ${currentRole === 'admin' ? 'active' : ''}`} onClick={() => setCurrentRole('admin')}>Admin</button>
-        </div>
-
         <div className="sidebar-footer">
-           <div className="user-mini">
-             <img src={user?.picture || "https://via.placeholder.com/30"} alt="User" />
-             <span>{user?.name || "User"}</span>
-           </div>
-           <button onClick={() => { localStorage.clear(); navigate('/login'); }} className="logout-link">Logout</button>
-        </div>
+   <div className="user-mini" onClick={() => navigate('/profile')} style={{cursor: 'pointer'}}>
+     {/* Logic to show profile pic if available, else placeholder */}
+     <img 
+        src={user.profile_pic || user.picture || "https://via.placeholder.com/30"} 
+        alt="User" 
+        onError={(e) => e.target.src = "https://via.placeholder.com/30"}
+     />
+     <div style={{display:'flex', flexDirection:'column'}}>
+        <span>{user.name}</span>
+        <small style={{fontSize:'0.7rem', color:'#718096'}}>Edit Profile</small>
+     </div>
+   </div>
+   <button onClick={handleLogout} className="logout-link">Logout</button>
+</div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* ================= MAIN CONTENT ================= */}
       <main className="main-area">
         <header className="top-bar">
-          <h2>{currentRole.charAt(0).toUpperCase() + currentRole.slice(1)} Dashboard</h2>
+          <div>
+            <h2 style={{textTransform: 'capitalize'}}>Welcome, {user.name.split(' ')[0]} 👋</h2>
+            <p style={{color:'#718096', fontSize:'0.9rem', margin:'5px 0 0'}}>
+              You are currently in <b>{viewMode === 'freelancer' ? 'Freelancer (Selling)' : viewMode === 'client' ? 'Client (Buying)' : 'Admin'}</b> mode.
+            </p>
+          </div>
           <button className="notif-btn">🔔</button>
         </header>
 
-        {/* Render the specific dashboard based on role */}
-        {currentRole === 'freelancer' && <FreelancerDash user={user} />}
-        {currentRole === 'client' && <ClientDash user={user} />}
-        {currentRole === 'admin' && <AdminDash user={user} />}
+        {/* Render the correct Dashboard Component and pass the REAL User object */}
+        {viewMode === 'freelancer' && <FreelancerDash user={user} />}
+        {viewMode === 'client' && <ClientDash user={user} />}
+        {viewMode === 'admin' && <AdminDash user={user} />}
+
       </main>
     </div>
   );

@@ -4,6 +4,8 @@ import './Forms.css';
 
 const PostRequirement = () => {
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('campusUser'));
+
   const [req, setReq] = useState({
     title: '',
     budget: '',
@@ -11,11 +13,45 @@ const PostRequirement = () => {
     details: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Requirement Posted:", req);
-    alert("Requirement Posted! Freelancers will bid soon.");
-    navigate('/dashboard');
+
+    // 1. Check Login
+    if (!user || !user.id) {
+        alert("❌ Error: You are not logged in. Please login first.");
+        navigate('/login');
+        return;
+    }
+
+    console.log("📤 Sending Requirement:", req);
+
+    try {
+        const response = await fetch('http://localhost:5000/api/requirements', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                client_id: user.id,
+                title: req.title,
+                // Combine Budget into description (since DB schema lacks budget col)
+                description: `[Budget: ₹${req.budget}] ${req.details}`,
+                // Send NULL if no deadline is picked, else send the date
+                deadline: req.deadline ? req.deadline : null 
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert("✅ Requirement Posted Successfully!");
+            navigate('/dashboard'); // Go back to dashboard to see it
+        } else {
+            alert("❌ Failed: " + (data.error || "Unknown Error"));
+            console.error("Server Error:", data);
+        }
+    } catch (error) {
+        console.error("Network Error:", error);
+        alert("Cannot connect to backend.");
+    }
   };
 
   return (
@@ -25,7 +61,7 @@ const PostRequirement = () => {
         
         <div className="form-header">
           <h2>Post a Requirement</h2>
-          <p>Tell us what you need done, and receive bids.</p>
+          <p>Hire students for your project.</p>
         </div>
 
         <form onSubmit={handleSubmit}>
@@ -34,7 +70,7 @@ const PostRequirement = () => {
             <input 
               type="text" 
               className="form-input" 
-              placeholder="e.g. Need a Python Script for Data Analysis" 
+              placeholder="e.g. Need a Python Script" 
               onChange={(e) => setReq({...req, title: e.target.value})}
               required
             />
@@ -48,6 +84,7 @@ const PostRequirement = () => {
                 className="form-input" 
                 placeholder="2000"
                 onChange={(e) => setReq({...req, budget: e.target.value})}
+                required
               />
             </div>
             <div className="form-section">
@@ -56,6 +93,7 @@ const PostRequirement = () => {
                 type="date" 
                 className="form-input"
                 onChange={(e) => setReq({...req, deadline: e.target.value})}
+                required
               />
             </div>
           </div>
@@ -64,8 +102,9 @@ const PostRequirement = () => {
             <label className="form-label">Project Details</label>
             <textarea 
               className="form-textarea" 
-              placeholder="Describe the task requirements, deliverables, and specific tools needed..."
+              placeholder="Describe what you need done..."
               onChange={(e) => setReq({...req, details: e.target.value})}
+              required
             ></textarea>
           </div>
 
