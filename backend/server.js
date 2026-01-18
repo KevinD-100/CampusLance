@@ -38,6 +38,16 @@ const transporter = nodemailer.createTransport({
     auth: { user: 'kevindaniel2028@mca.ajce.in', pass: 'xjgw pyeq akkh gpxf' }
 });
 
+// HELPER: NOTIFICATIONS
+const notify = (userId, type, message) => {
+    const sql = "INSERT INTO notifications (user_id, type, payload, is_read) VALUES (?, ?, ?, 0)";
+    // Payload stored as JSON string for simplicity
+    const payload = JSON.stringify({ message });
+    db.query(sql, [userId, type, payload], (err) => {
+        if(err) console.error("Notification Error:", err);
+    });
+};
+
 // ================= ROUTES ================= //
 
 // --- AUTH ---
@@ -163,20 +173,39 @@ app.post('/api/bids', (req, res) => {
     db.query("SELECT * FROM bids WHERE requirement_id = ? AND freelancer_id = ?", [requirement_id, freelancer_id], (err, data) => {
         if (data.length > 0) return res.status(400).json({ error: "Already bid" });
         db.query("INSERT INTO bids (requirement_id, freelancer_id, price, delivery_days, message) VALUES (?, ?, ?, ?, ?)", 
-        [requirement_id, freelancer_id, price, delivery_days, message], (err) => res.json({ message: "Bid Submitted" }));
+        [requirement_id, freelancer_id, price, delivery_days, message], (err) => {
+            // Notify Client
+            db.query("SELECT client_id FROM requirements WHERE id = ?", [requirement_id], (e, r) => {
+                notify(r[0].client_id, 'bid', `New bid received on your job!`);
+            });
+            res.json({ message: "Bid Submitted" });
+        });
     });
 });
 
 app.get('/api/bids/job/:id', (req, res) => {
-    db.query("SELECT bids.*, users.name as freelancer_name FROM bids JOIN users ON bids.freelancer_id = users.id WHERE requirement_id = ?", 
-    [req.params.id], (err, results) => res.json(results));
+    const sql = `
+        SELECT bids.*, users.name as freelancer_name, users.profile_pic, users.id as user_id 
+        FROM bids 
+        JOIN users ON bids.freelancer_id = users.id 
+        WHERE bids.requirement_id = ? 
+        ORDER BY bids.price ASC
+    `;
+    db.query(sql, [req.params.id], (err, results) => {
+        if (err) return res.status(500).json({ error: err.message });
+        res.json(results);
+    });
 });
 
-// --- ORDERS & CHAT ---
+// --- ORDERS & CHAT & DELIVERY ---
 app.post('/api/orders/hire', (req, res) => {
     const { requirement_id, client_id, freelancer_id, bid_id, price } = req.body;
     db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status) VALUES (?, ?, ?, ?, ?, 'in_progress')", 
-    [requirement_id, client_id, freelancer_id, bid_id, price], (err) => res.json({ message: "Hired!" }));
+    [requirement_id, client_id, freelancer_id, bid_id, price], (err) => {
+        if(err) return res.status(500).json(err);
+        notify(freelancer_id, 'order', `You have been hired!`);
+        res.json({ message: "Hired!" });
+    });
 });
 
 app.get('/api/orders/freelancer/:id', (req, res) => {
@@ -191,7 +220,7 @@ app.get('/api/orders/client/:id', (req, res) => {
               WHERE orders.client_id = ? ORDER BY orders.created_at DESC`, [req.params.id], (err, results) => res.json(results));
 });
 
-// 🔴 UPDATED: GET MESSAGES (Uses sent_date and sent_time)
+// GET MESSAGES
 app.get('/api/messages/:orderId', (req, res) => {
     const sql = `
         SELECT m.id, m.order_id, m.sender_id, m.text, m.sent_date, m.sent_time, u.name as sender_name 
@@ -206,7 +235,7 @@ app.get('/api/messages/:orderId', (req, res) => {
     });
 });
 
-// 🔴 UPDATED: SEND MESSAGE (Inserts sent_date and sent_time)
+// SEND MESSAGE
 app.post('/api/messages', (req, res) => {
     const { order_id, sender_id, text } = req.body;
     const now = new Date();
@@ -214,24 +243,86 @@ app.post('/api/messages', (req, res) => {
     const sent_time = now.toTimeString().split(' ')[0];
 
     db.query("INSERT INTO messages (order_id, sender_id, text, sent_date, sent_time) VALUES (?, ?, ?, ?, ?)", 
-    [order_id, sender_id, text, sent_date, sent_time], (err) => res.json({ message: "Sent" }));
+    [order_id, sender_id, text, sent_date, sent_time], (err) => {
+        // Notify Receiver
+        db.query("SELECT client_id, freelancer_id FROM orders WHERE id = ?", [order_id], (e, r) => {
+            const receiver = (sender_id == r[0].client_id) ? r[0].freelancer_id : r[0].client_id;
+            notify(receiver, 'message', `New message received`);
+        });
+        res.json({ message: "Sent" });
+    });
 });
 
-// 🔴 UPDATED: DELIVER WORK (Inserts sent_date and sent_time)
+// DELIVER WORK
 app.post('/api/orders/deliver', upload.single('workFile'), (req, res) => {
     const { order_id, sender_id, text } = req.body;
     const file_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
     const msgText = text + (file_url ? ` [FILE: ${file_url}]` : "");
-    
     const now = new Date();
     const sent_date = now.toISOString().split('T')[0];
     const sent_time = now.toTimeString().split(' ')[0];
 
-    // Assuming file_id is NULL for simplicity unless you insert into files table first
     db.query("INSERT INTO messages (order_id, sender_id, text, file_id, sent_date, sent_time) VALUES (?, ?, ?, NULL, ?, ?)", 
     [order_id, sender_id, msgText, sent_date, sent_time], (err) => {
         if(err) return res.status(500).json({ error: err.message });
-        db.query("UPDATE orders SET status = 'final_delivered' WHERE id = ?", [order_id], () => res.json({ message: "Delivered" }));
+        db.query("UPDATE orders SET status = 'final_delivered' WHERE id = ?", [order_id], () => {
+            // Notify Client
+            db.query("SELECT client_id FROM orders WHERE id = ?", [order_id], (e, r) => notify(r[0].client_id, 'delivery', 'Freelancer delivered work!'));
+            res.json({ message: "Delivered" });
+        });
+    });
+});
+
+// CLIENT REVIEW
+app.post('/api/orders/review', (req, res) => {
+    const { order_id, status, client_id, feedback } = req.body;
+    const msgText = status === 'completed' ? `🎉 ORDER COMPLETED!` : `⚠️ REVISION REQUESTED: ${feedback}`;
+    const now = new Date();
+    const sent_date = now.toISOString().split('T')[0];
+    const sent_time = now.toTimeString().split(' ')[0];
+
+    db.query("INSERT INTO messages (order_id, sender_id, text, sent_date, sent_time) VALUES (?, ?, ?, ?, ?)", 
+    [order_id, client_id, msgText, sent_date, sent_time], (err) => {
+        db.query("UPDATE orders SET status = ? WHERE id = ?", [status, order_id], () => {
+            // Notify Freelancer
+            db.query("SELECT freelancer_id FROM orders WHERE id = ?", [order_id], (e, r) => notify(r[0].freelancer_id, 'review', status === 'completed' ? 'Order Completed!' : 'Revision Requested'));
+            res.json({ message: "Updated" });
+        });
+    });
+});
+
+// --- NOTIFICATIONS ---
+app.get('/api/notifications/:userId', (req, res) => {
+    db.query("SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC", [req.params.userId], (err, results) => res.json(results));
+});
+
+// Mark as Read
+app.put('/api/notifications/read/all/:userId', (req, res) => {
+    db.query("UPDATE notifications SET is_read = 1 WHERE user_id = ?", [req.params.userId], (err) => {
+        if(err) return res.status(500).json({ error: err.message });
+        res.json({ success: true });
+    });
+});
+
+// --- PROFILE ---
+app.get('/api/profile/:id', (req, res) => {
+    db.query(`SELECT u.id, u.name, u.email, u.role, u.profile_pic, fp.bio, fp.skills FROM users u LEFT JOIN freelancer_profiles fp ON u.id = fp.user_id WHERE u.id = ?`, 
+    [req.params.id], (err, result) => res.json(result[0]));
+});
+
+app.put('/api/profile/:id', upload.single('profilePic'), (req, res) => {
+    const userId = req.params.id;
+    const { name, bio, skills } = req.body;
+    let profile_pic_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : undefined;
+
+    let userSql = "UPDATE users SET name = ?";
+    let userParams = [name];
+    if (profile_pic_url) { userSql += ", profile_pic = ?"; userParams.push(profile_pic_url); }
+    userSql += " WHERE id = ?"; userParams.push(userId);
+
+    db.query(userSql, userParams, () => {
+        db.query(`INSERT INTO freelancer_profiles (user_id, bio, skills) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE bio = VALUES(bio), skills = VALUES(skills)`, 
+        [userId, bio, skills], () => res.json({ message: "Profile Updated", newPic: profile_pic_url }));
     });
 });
 
@@ -247,195 +338,59 @@ app.get('/api/portfolio/:id', (req, res) => {
     db.query("SELECT * FROM portfolio_items WHERE freelancer_id = ?", [req.params.id], (err, results) => res.json(results));
 });
 
-// 🔴 CLIENT REVIEW (Accept or Request Revision)
-app.post('/api/orders/review', (req, res) => {
-    const { order_id, status, client_id, feedback } = req.body;
-    // status: 'revision_requested' or 'completed'
-    
-    const msgText = status === 'completed' 
-        ? `🎉 ORDER COMPLETED! The client accepted the work.` 
-        : `⚠️ REVISION REQUESTED: ${feedback}`;
-
-    // 1. Add System Message to Chat
-    db.query("INSERT INTO messages (order_id, sender_id, text) VALUES (?, ?, ?)", [order_id, client_id, msgText], (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-
-        // 2. Update Order Status
-        db.query("UPDATE orders SET status = ? WHERE id = ?", [status, order_id], (err2) => {
-            if (err2) return res.status(500).json({ error: err2.message });
-            res.json({ message: "Order Updated Successfully" });
-        });
-    });
-});
-// ============================================
-// 👤 PROFILE ROUTES
-// ============================================
-
-// 1. GET PROFILE (Joins User + Freelancer Profile)
-app.get('/api/profile/:id', (req, res) => {
-    const sql = `
-        SELECT u.id, u.name, u.email, u.role, u.profile_pic, fp.bio, fp.skills 
-        FROM users u 
-        LEFT JOIN freelancer_profiles fp ON u.id = fp.user_id 
-        WHERE u.id = ?
-    `;
-    db.query(sql, [req.params.id], (err, result) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(result[0]);
-    });
-});
-
-// 2. UPDATE PROFILE (Name, Pic, Bio, Skills)
-app.put('/api/profile/:id', upload.single('profilePic'), (req, res) => {
-    const userId = req.params.id;
-    const { name, bio, skills } = req.body;
-    
-    // 1. Handle Image URL
-    let profile_pic_url = undefined;
-    if (req.file) {
-        profile_pic_url = `http://localhost:5000/uploads/${req.file.filename}`;
-    }
-
-    // 2. Update USERS table (Name, Pic)
-    let userSql = "UPDATE users SET name = ?";
-    let userParams = [name];
-    
-    if (profile_pic_url) {
-        userSql += ", profile_pic = ?";
-        userParams.push(profile_pic_url);
-    }
-    userSql += " WHERE id = ?";
-    userParams.push(userId);
-
-    db.query(userSql, userParams, (err) => {
-        if (err) return res.status(500).json({ error: err.message });
-
-        // 3. Update/Insert FREELANCER_PROFILES table (Bio, Skills)
-        // ON DUPLICATE KEY UPDATE ensures we create a row if it doesn't exist yet
-        const profileSql = `
-            INSERT INTO freelancer_profiles (user_id, bio, skills) 
-            VALUES (?, ?, ?) 
-            ON DUPLICATE KEY UPDATE bio = VALUES(bio), skills = VALUES(skills)
-        `;
-        db.query(profileSql, [userId, bio, skills], (err2) => {
-            if (err2) return res.status(500).json({ error: err2.message });
-            
-            // Return updated info so frontend can update localStorage
-            res.json({ message: "Profile Updated", newPic: profile_pic_url });
-        });
-    });
-});
-// ============================================
-// 👮 ADMIN ROUTES
-// ============================================
-
-// 1. Get Admin Stats
+// --- ADMIN ---
 app.get('/api/admin/stats', (req, res) => {
-    const stats = {};
-    
-    // We run multiple queries in sequence (simplest way for now)
-    db.query("SELECT COUNT(*) as count FROM users", (err, res1) => {
-        if(err) return res.status(500).json(err);
-        stats.users = res1[0].count;
-
-        db.query("SELECT COUNT(*) as count FROM gigs", (err, res2) => {
-            stats.gigs = res2[0].count;
-
-            db.query("SELECT COUNT(*) as count FROM orders", (err, res3) => {
-                stats.orders = res3[0].count;
-                res.json(stats);
+    db.query("SELECT COUNT(*) as u FROM users", (e, r1) => {
+        db.query("SELECT COUNT(*) as g FROM gigs", (e, r2) => {
+            db.query("SELECT COUNT(*) as o FROM orders", (e, r3) => {
+                res.json({ users: r1[0].u, gigs: r2[0].g, orders: r3[0].o });
             });
         });
     });
 });
 
-// 2. Get All Users (For Management)
 app.get('/api/admin/users', (req, res) => {
-    db.query("SELECT id, name, email, role, created_at FROM users ORDER BY created_at DESC", (err, results) => {
-        if(err) return res.status(500).json(err);
-        res.json(results);
-    });
+    db.query("SELECT * FROM users ORDER BY created_at DESC", (err, resu) => res.json(resu));
 });
 
-// 3. Delete a User (Ban)
 app.delete('/api/admin/user/:id', (req, res) => {
-    db.query("DELETE FROM users WHERE id = ?", [req.params.id], (err) => {
-        if(err) return res.status(500).json(err);
-        res.json({ message: "User Deleted" });
-    });
+    db.query("DELETE FROM users WHERE id = ?", [req.params.id], () => res.json({message:"Deleted"}));
 });
 
-// 4. Get All Gigs (For Moderation)
 app.get('/api/admin/gigs', (req, res) => {
-    const sql = `SELECT gigs.*, users.name as freelancer_name FROM gigs JOIN users ON gigs.freelancer_id = users.id ORDER BY created_at DESC`;
-    db.query(sql, (err, results) => {
-        if(err) return res.status(500).json(err);
-        res.json(results);
-    });
+    db.query("SELECT gigs.*, users.name as freelancer_name FROM gigs JOIN users ON gigs.freelancer_id = users.id ORDER BY created_at DESC", (err, resu) => res.json(resu));
 });
 
-// 5. Delete a Gig (Moderation)
 app.delete('/api/admin/gig/:id', (req, res) => {
-    db.query("DELETE FROM gigs WHERE id = ?", [req.params.id], (err) => {
-        if(err) return res.status(500).json(err);
-        res.json({ message: "Gig Deleted" });
-    });
+    db.query("DELETE FROM gigs WHERE id = ?", [req.params.id], () => res.json({message:"Deleted"}));
 });
 
-// 1. Manage User Status (Approve / Disable)
 app.put('/api/admin/user/status/:id', (req, res) => {
-    const { status } = req.body; // 'active' or 'disabled'
-    db.query("UPDATE users SET status = ? WHERE id = ?", [status, req.params.id], (err) => {
-        if(err) return res.status(500).json(err);
-        res.json({ message: `User ${status}` });
-    });
+    const { status } = req.body;
+    db.query("UPDATE users SET status = ? WHERE id = ?", [status, req.params.id], () => res.json({ message: `User ${status}` }));
 });
 
-// 2. Get Disputes
 app.get('/api/admin/disputes', (req, res) => {
-    const sql = `
-        SELECT d.*, o.total_price, u.name as raised_by_name 
-        FROM disputes d
-        JOIN orders o ON d.order_id = o.id
-        JOIN users u ON d.raised_by = u.id
-        WHERE d.status = 'open'
-    `;
-    db.query(sql, (err, results) => res.json(results));
+    db.query(`SELECT d.*, o.total_price, u.name as raised_by_name FROM disputes d JOIN orders o ON d.order_id = o.id JOIN users u ON d.raised_by = u.id WHERE d.status = 'open'`, (err, results) => res.json(results));
 });
 
-// 3. Resolve Dispute
 app.post('/api/admin/dispute/resolve', (req, res) => {
-    const { dispute_id, order_id, resolution } = req.body; 
-    // resolution: 'resolved_refund' (Cancel Order) or 'resolved_paid' (Complete Order)
-    
+    const { dispute_id, order_id, resolution } = req.body;
     const orderStatus = resolution === 'resolved_refund' ? 'cancelled' : 'completed';
-
-    db.query("UPDATE disputes SET status = ? WHERE id = ?", [resolution, dispute_id], (err) => {
-        if(err) return res.status(500).json(err);
-        
-        // Also update the Order status based on the decision
-        db.query("UPDATE orders SET status = ? WHERE id = ?", [orderStatus, order_id], (err2) => {
-            if(err2) return res.status(500).json(err2);
-            res.json({ message: "Dispute Resolved & Order Updated" });
-        });
+    db.query("UPDATE disputes SET status = ? WHERE id = ?", [resolution, dispute_id], () => {
+        db.query("UPDATE orders SET status = ? WHERE id = ?", [orderStatus, order_id], () => res.json({ message: "Resolved" }));
     });
 });
 
-// 4. Manage Categories (Rules)
 app.get('/api/admin/categories', (req, res) => {
     db.query("SELECT * FROM categories", (err, results) => res.json(results));
 });
 
 app.post('/api/admin/categories', (req, res) => {
-    db.query("INSERT INTO categories (name) VALUES (?)", [req.body.name], (err, result) => {
-        if(err) return res.status(500).json(err);
-        res.json({ id: result.insertId, name: req.body.name });
-    });
+    db.query("INSERT INTO categories (name) VALUES (?)", [req.body.name], (err, result) => res.json({ id: result.insertId, name: req.body.name }));
 });
 
-// 5. Advanced Analytics (Sprint Summary Mock)
 app.get('/api/admin/sprint-summary', (req, res) => {
-    // In a real app, calculate this from dates. For now, we mock the "Sprint" logic with real counts.
     db.query("SELECT COUNT(*) as count FROM orders WHERE status='completed'", (err, res1) => {
         const completed = res1[0].count;
         db.query("SELECT SUM(total_price) as total FROM orders", (err, res2) => {
@@ -443,7 +398,7 @@ app.get('/api/admin/sprint-summary', (req, res) => {
                 sprint_week: "Week 12 (Current)",
                 orders_completed: completed,
                 revenue_flow: res2[0].total || 0,
-                active_freelancers: 5 // Mock for complexity
+                active_freelancers: 5 
             });
         });
     });
