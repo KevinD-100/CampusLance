@@ -643,3 +643,96 @@
   border-color: #3182CE;
   color: #2C5282;
 }
+
+/* --- ENHANCED MANAGE ORDER MODAL --- */
+.order-summary-box {
+  background-color: #F8FAFC;
+  border: 1px solid #E2E8F0;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 25px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.order-info-item {
+  text-align: center;
+}
+.order-info-item small {
+  display: block;
+  font-size: 0.75rem;
+  color: #718096;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.order-info-item strong {
+  color: #2D3748;
+  font-size: 1rem;
+}
+
+/* Better Progress Tracker */
+.progress-container {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  margin-bottom: 30px;
+  margin-top: 10px;
+}
+
+/* The Grey Line behind */
+.progress-container::before {
+  content: '';
+  position: absolute;
+  top: 15px;
+  left: 10px;
+  right: 10px;
+  height: 4px;
+  background: #E2E8F0;
+  z-index: 0;
+}
+
+.progress-step {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  width: 80px; 
+}
+
+.step-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #CBD5E0;
+  color: #CBD5E0;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 8px auto; /* Centers circle */
+  font-size: 0.9rem;
+  transition: all 0.3s;
+}
+
+.step-label {
+  font-size: 0.75rem;
+  color: #A0AEC0;
+  font-weight: 600;
+}
+
+/* Active/Completed States */
+.progress-step.active .step-circle {
+  border-color: #3182CE;
+  color: #3182CE;
+  background: #EBF8FF;
+  transform: scale(1.1);
+}
+.progress-step.active .step-label { color: #3182CE; }
+
+.progress-step.completed .step-circle {
+  background: #48BB78;
+  border-color: #48BB78;
+  color: white;
+}
+.progress-step.completed .step-label { color: #48BB78; }

@@ -61,7 +61,16 @@ const CreateGig = () => {
             <div className="form-section">
               <label className="form-label">Category</label>
               <select className="form-select" onChange={(e) => setGig({...gig, category: e.target.value})}>
-                <option>Web Development</option><option>Graphic Design</option><option>Writing</option>
+                <option value="">Select Category</option>
+                <option value="Web Development">Web Development</option>
+                <option value="Mobile App Dev">Mobile App Dev</option>
+                <option value="Graphic Design">Graphic Design</option>
+                <option value="Content Writing">Content Writing</option>
+                <option value="Video Editing">Video Editing</option>
+                <option value="Data Science & AI">Data Science & AI</option>
+                <option value="Digital Marketing">Digital Marketing</option>
+                <option value="Photography">Photography</option>
+                <option value="Photography">Other</option>
               </select>
             </div>
             <div className="form-section">

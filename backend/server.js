@@ -160,8 +160,23 @@ app.post('/api/requirements', (req, res) => {
 });
 
 app.get('/api/requirements', (req, res) => {
-    db.query("SELECT requirements.*, users.name as client_name FROM requirements JOIN users ON requirements.client_id = users.id ORDER BY requirements.created_at DESC", 
-    (err, results) => res.json(results));
+    const sql = `
+        SELECT r.*, u.name as client_name, u.profile_pic
+        FROM requirements r
+        JOIN users u ON r.client_id = u.id
+        LEFT JOIN orders o ON r.id = o.requirement_id
+        WHERE o.id IS NULL
+        ORDER BY r.created_at DESC
+    `;
+    // Logic: LEFT JOIN orders... WHERE o.id IS NULL means "Keep only rows where no order exists"
+    
+    db.query(sql, (err, results) => {
+        if (err) {
+            console.error("❌ Fetch Jobs Error:", err);
+            return res.status(500).json({ error: err.message });
+        }
+        res.json(results);
+    });
 });
 
 app.get('/api/requirements/client/:id', (req, res) => {
@@ -403,7 +418,13 @@ app.get('/api/admin/sprint-summary', (req, res) => {
         });
     });
 });
-
+// DELETE GIG (Freelancer)
+app.delete('/api/gigs/:id', (req, res) => {
+    db.query("DELETE FROM gigs WHERE id = ?", [req.params.id], (err) => {
+        if(err) return res.status(500).json({ error: err.message });
+        res.json({ message: "Gig Deleted" });
+    });
+});
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
