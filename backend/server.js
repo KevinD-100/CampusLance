@@ -107,12 +107,18 @@ app.post('/api/auth/reset-password', (req, res) => {
     });
 });
 
-// --- GIGS (Create, Get, Edit) ---
+// 1. CREATE GIG (Professional)
 app.post('/api/gigs', upload.single('image'), (req, res) => {
-    const { freelancer_id, title, description, price, delivery_days } = req.body;
-    const image_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
-    db.query("INSERT INTO gigs (freelancer_id, title, description, price, delivery_days, image_url) VALUES (?, ?, ?, ?, ?, ?)", 
-    [freelancer_id, title, description, price, delivery_days, image_url], (err, result) => {
+    const { freelancer_id, title, description, price, delivery_days, category, revisions, requirements, skills } = req.body;
+    const image_url = req.file ? req.file.path : null; // Cloudinary URL
+
+    const sql = `
+        INSERT INTO gigs 
+        (freelancer_id, title, description, price, delivery_days, image_url, category, revisions, requirements, skills) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    db.query(sql, [freelancer_id, title, description, price, delivery_days, image_url, category, revisions, requirements, skills], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: "Gig Created", gigId: result.insertId });
     });
@@ -425,6 +431,51 @@ app.delete('/api/gigs/:id', (req, res) => {
         res.json({ message: "Gig Deleted" });
     });
 });
+// ============================================
+// ❤️ FAVORITES ROUTES
+// ============================================
+
+// 1. Toggle Favorite (Add/Remove)
+app.post('/api/favorites', (req, res) => {
+    const { user_id, target_id, fav_type } = req.body;
+    
+    // Check if already favorite
+    db.query("SELECT * FROM favorites WHERE user_id=? AND target_id=? AND fav_type=?", [user_id, target_id, fav_type], (err, data) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        if (data.length > 0) {
+            // Remove
+            db.query("DELETE FROM favorites WHERE id=?", [data[0].id], () => res.json({ status: 'removed' }));
+        } else {
+            // Add
+            db.query("INSERT INTO favorites (user_id, target_id, fav_type) VALUES (?, ?, ?)", [user_id, target_id, fav_type], () => res.json({ status: 'added' }));
+        }
+    });
+});
+
+// 2. Get Favorites for User
+app.get('/api/favorites/:userId', (req, res) => {
+    db.query("SELECT target_id FROM favorites WHERE user_id = ?", [req.params.userId], (err, result) => {
+        if (err) return res.status(500).json({ error: err.message });
+        // Return array of IDs: [1, 5, 8]
+        res.json(result.map(r => r.target_id));
+    });
+});
+
+// 3. Submit Rating
+app.post('/api/ratings', (req, res) => {
+    const { order_id, client_id, freelancer_id, stars, comment } = req.body;
+    db.query("INSERT INTO ratings (order_id, client_id, freelancer_id, stars, comment) VALUES (?, ?, ?, ?, ?)", 
+    [order_id, client_id, freelancer_id, stars, comment], (err) => {
+        if(err) return res.status(500).json({error: err.message});
+        
+        // Update Skill Score (+2 per star)
+        db.query("UPDATE freelancer_profiles SET skill_score = skill_score + ? WHERE user_id = ?", [stars * 2, freelancer_id]);
+        
+        res.json({ message: "Rating Submitted" });
+    });
+});
+
 const PORT = 5000;
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);

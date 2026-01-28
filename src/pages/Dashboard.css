@@ -736,3 +736,86 @@
   color: white;
 }
 .progress-step.completed .step-label { color: #48BB78; }
+
+/* --- MODERN ORDER CARDS (CLIENT) --- */
+.order-card-modern {
+  background: white;
+  border: 1px solid #E2E8F0;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.order-card-modern:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
+
+.oc-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.oc-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2D3748;
+  margin: 0 0 5px 0;
+}
+
+.oc-freelancer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.oc-freelancer img {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 1px solid #E2E8F0;
+}
+
+.oc-price {
+  font-weight: 800;
+  color: #2D3748;
+  font-size: 1.2rem;
+}
+
+/* Progress Bar Visual */
+.oc-progress-container {
+  width: 100%;
+  height: 8px;
+  background: #EDF2F7;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 5px;
+}
+
+.oc-progress-fill {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+/* Progress Colors */
+.prog-10 { width: 10%; background: #CBD5E0; } /* Created */
+.prog-50 { width: 50%; background: #3182CE; } /* In Progress */
+.prog-90 { width: 90%; background: #D69E2E; } /* Delivered / Revision */
+.prog-100 { width: 100%; background: #48BB78; } /* Completed */
+
+.oc-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top: 1px solid #F7FAFC;
+  padding-top: 15px;
+  margin-top: auto;
+}

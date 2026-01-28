@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
+import ChatWindow from '../components/ChatWindow';
 
 const FreelancerDash = ({ user }) => {
   const navigate = useNavigate();
@@ -27,10 +28,6 @@ const FreelancerDash = ({ user }) => {
 
   // Chat
   const [chatOrder, setChatOrder] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState("");
-  const chatInterval = useRef(null);
-  const chatBodyRef = useRef(null);
 
   // Profile Modal State
   const [viewProfileId, setViewProfileId] = useState(null);
@@ -122,12 +119,6 @@ const FreelancerDash = ({ user }) => {
     setManageOrder(null); setDeliveryFile(null); setDeliveryNote(''); refreshData();
   };
 
-  // Chat Logic
-  const openChat = (order) => { setChatOrder(order); setMessages([]); fetchMessages(order.id); if(chatInterval.current) clearInterval(chatInterval.current); chatInterval.current = setInterval(() => fetchMessages(order.id), 2000); };
-  const closeChat = () => { setChatOrder(null); if(chatInterval.current) clearInterval(chatInterval.current); };
-  const fetchMessages = (id) => fetch(`http://localhost:5000/api/messages/${id}`).then(res=>res.json()).then(d=>{if(Array.isArray(d)){setMessages(d); if(chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;}});
-  const sendMessage = async (e) => { e.preventDefault(); if(!newMessage.trim()) return; await fetch('http://localhost:5000/api/messages', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ order_id: chatOrder.id, sender_id: user.id, text: newMessage }) }); setNewMessage(""); fetchMessages(chatOrder.id); };
-
   // --- SECTIONS ---
   const OverviewSection = () => (
     <div className="animate-fade-in">
@@ -157,7 +148,7 @@ const FreelancerDash = ({ user }) => {
                     </div>
 
                     <div style={{display:'flex', gap:'10px', marginTop:'20px'}}>
-                        <button className="action-btn outline" style={{flex:1}} onClick={() => openChat(order)}>💬 Chat</button>
+                        <button className="action-btn outline" style={{flex:1}} onClick={() => setChatOrder(order)}>💬 Chat</button>
                         {order.status !== 'completed' && (
                             <button className="action-btn success" style={{flex:1}} onClick={() => setManageOrder(order)}>
                                 🚀 Manage
@@ -300,7 +291,13 @@ const FreelancerDash = ({ user }) => {
       )}
 
       {/* Chat & Bid Modals */}
-      {chatOrder && <div className="chat-overlay"><div className="chat-header"><span>Chat: {chatOrder.client_name}</span><button onClick={closeChat} style={{background:'none', border:'none', color:'white', cursor:'pointer'}}>✖</button></div><div className="chat-body" ref={chatBodyRef}>{messages.map(m => (<div key={m.id} className={`chat-bubble ${String(m.sender_id) === String(user.id) ? 'mine' : 'theirs'}`}>{m.text}<span className="chat-time">{m.sent_time?.slice(0,5)}</span></div>))}</div><form className="chat-footer" onSubmit={sendMessage}><input className="chat-input" placeholder="Type..." value={newMessage} onChange={e=>setNewMessage(e.target.value)} /><button className="chat-send-btn">➤</button></form></div>}
+      {chatOrder && (
+    <ChatWindow 
+        order={chatOrder} 
+        currentUser={user} 
+        onClose={() => setChatOrder(null)} 
+    />
+)}
       {bidModal && <div className="modal-overlay"><div className="modal-card"><h3>Bid on: {bidModal.title}</h3><form onSubmit={submitBid}><div style={{marginBottom:'10px'}}><label>Price</label><input type="number" className="form-input" onChange={e=>setBidData({...bidData, price:e.target.value})} required/></div><div style={{marginBottom:'10px'}}><label>Days</label><input type="number" className="form-input" onChange={e=>setBidData({...bidData, days:e.target.value})} required/></div><div style={{marginBottom:'10px'}}><label>Message</label><textarea className="form-textarea" onChange={e=>setBidData({...bidData, msg:e.target.value})} required></textarea></div><div style={{display:'flex', gap:'10px', marginTop:'15px'}}><button type="button" className="btn-small outline" onClick={()=>setBidModal(null)}>Cancel</button><button className="submit-btn" style={{margin:0}}>Submit</button></div></form></div></div>}
     </div>
   );
