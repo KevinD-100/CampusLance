@@ -84,9 +84,7 @@ const Dashboard = () => {
             Dashboard
           </div>
 
-          <div className={`menu-item ${currentSection === 'messages' ? 'active' : ''}`} onClick={() => setCurrentSection('messages')}>
-            Messages {unreadCount > 0 && <span className="badge pending" style={{ marginLeft: 'auto' }}>!</span>}
-          </div>
+
 
           {/* DYNAMIC MENU LINKS */}
           {viewMode === 'freelancer' && (

@@ -4,12 +4,13 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ForgotPassword from './pages/ForgotPassword';
 import Dashboard from './pages/Dashboard';
-import CreateGig from './pages/CreateGig';        
-import PostRequirement from './pages/PostRequirement'; 
+import CreateGig from './pages/CreateGig';
+import PostRequirement from './pages/PostRequirement';
 import ResetPassword from './pages/ResetPassword';
-import EditGig from './pages/EditGig'; 
+import EditGig from './pages/EditGig';
 import UploadPortfolio from './pages/UploadPortfolio';
 import Profile from './pages/Profile';
+import GigDetails from './pages/GigDetails';
 
 function App() {
   return (
@@ -25,6 +26,7 @@ function App() {
       <Route path="/edit-gig/:id" element={<EditGig />} />
       <Route path="/upload-portfolio" element={<UploadPortfolio />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/gig/:id" element={<GigDetails />} />
     </Routes>
   );
 }

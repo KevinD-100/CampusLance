@@ -157,7 +157,7 @@ const ClientDash = ({ user, section }) => {
           return (
             <div key={gig.id} className="gig-card">
               <img src={gig.image_url || `https://via.placeholder.com/400`} alt={gig.title} className="gig-img" onError={(e) => e.target.src = "https://via.placeholder.com/400"} />
-              <div className="gig-info"><h4>{gig.title}</h4><div className="gig-meta"><span onClick={() => setViewProfileId(gig.freelancer_id)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>👤 {gig.freelancer_name}</span><span>⭐ 5.0</span></div><div className="gig-footer"><span className="gig-price">₹{gig.price}</span><button className="btn-small outline">View</button></div></div>
+              <div className="gig-info"><h4>{gig.title}</h4><div className="gig-meta"><span onClick={() => setViewProfileId(gig.freelancer_id)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>👤 {gig.freelancer_name}</span><span>⭐ 5.0</span></div><div className="gig-footer"><span className="gig-price">₹{gig.price}</span><button className="btn-small outline" onClick={() => navigate(`/gig/${gig.id}`)}>View Details</button></div></div>
               <button className={`fav-btn ${isFav ? 'active' : ''}`} onClick={() => toggleFavorite(gig.freelancer_id)} style={{ color: isFav ? '#E53E3E' : '#CBD5E0' }}>♥</button>
             </div>
           );

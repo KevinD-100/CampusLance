@@ -144,9 +144,13 @@ const FreelancerDash = ({ user, section }) => {
   // --- SECTIONS ---
   const OverviewSection = () => {
     const [orderFilter, setOrderFilter] = useState('active'); // 'active' | 'past'
+    const [viewOrderDetails, setViewOrderDetails] = useState(null);
 
     // Filter logic
     const displayedOrders = orders.filter(o => {
+      // Hide inquiries from main list (they are in messages)
+      if (o.status === 'inquiry') return false;
+
       if (orderFilter === 'active') return o.status !== 'completed' && o.status !== 'cancelled';
       if (orderFilter === 'past') return o.status === 'completed' || o.status === 'cancelled';
       return true;
@@ -156,7 +160,8 @@ const FreelancerDash = ({ user, section }) => {
       <div className="animate-fade-in">
         <div className="stats-grid">
           <div className="stat-card"><h3>💰 Total Earnings</h3><div className="value">₹{totalEarnings}</div></div>
-          <div className="stat-card"><h3>📦 Active Orders</h3><div className="value">{orders.filter(o => o.status !== 'completed').length}</div></div>
+          {/* Filter out inquiries from active count to match list */}
+          <div className="stat-card"><h3>📦 Active Orders</h3><div className="value">{orders.filter(o => o.status !== 'completed' && o.status !== 'inquiry').length}</div></div>
           <div className="stat-card"><h3>✅ Completed</h3><div className="value">{orders.filter(o => o.status === 'completed').length}</div></div>
         </div>
 
@@ -222,6 +227,7 @@ const FreelancerDash = ({ user, section }) => {
 
                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                   <button className="action-btn outline" style={{ flex: 1 }} onClick={() => setChatOrder(order)}>💬 Chat</button>
+                  <button className="action-btn outline" style={{ flex: 1 }} onClick={() => setViewOrderDetails(order)}>📄 Details</button>
                   {order.status !== 'completed' && order.status !== 'cancelled' && (
                     <button className="action-btn success" style={{ flex: 1 }} onClick={() => setManageOrder(order)}>
                       🚀 Manage
@@ -232,6 +238,46 @@ const FreelancerDash = ({ user, section }) => {
             ))}
           </div>
         )}
+
+        {/* ORDER DETAILS MODAL */}
+        {viewOrderDetails && (
+          <div className="modal-overlay" onClick={() => setViewOrderDetails(null)}>
+            <div className="modal-card" style={{ width: '500px', maxWidth: '90%' }} onClick={e => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0 }}>Order Details</h3>
+                <button onClick={() => setViewOrderDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#718096', fontSize: '0.85rem' }}>ORDER ID</label>
+                <div style={{ fontSize: '1.1rem' }}>#ORD-{viewOrderDetails.id}</div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#718096', fontSize: '0.85rem' }}>JOB TITLE</label>
+                <div style={{ fontSize: '1.1rem', fontWeight: '600' }}>{viewOrderDetails.job_title}</div>
+              </div>
+
+              <div style={{ marginBottom: '20px', maxHeight: '200px', overflowY: 'auto', background: '#f9f9f9', padding: '10px', borderRadius: '8px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '5px', color: '#718096', fontSize: '0.85rem' }}>DETAILS / REQUIREMENTS</label>
+                <div style={{ fontSize: '0.95rem', color: '#2D3748', whiteSpace: 'pre-wrap' }}>{viewOrderDetails.job_description || "No specific details provided."}</div>
+              </div>
+
+              <div style={{ marginBottom: '20px', background: '#F7FAFC', padding: '15px', borderRadius: '8px' }}>
+                <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px', color: '#718096', fontSize: '0.85rem' }}>CLIENT & PRICE</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span>👤 {viewOrderDetails.client_name}</span>
+                  </div>
+                  <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#48BB78' }}>₹{viewOrderDetails.total_price}</div>
+                </div>
+              </div>
+
+              <button className="create-btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => setViewOrderDetails(null)}>Close</button>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   };

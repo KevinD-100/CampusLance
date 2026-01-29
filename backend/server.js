@@ -156,7 +156,22 @@ app.get('/api/gigs/my/:id', (req, res) => {
 });
 
 app.get('/api/gigs/single/:id', (req, res) => {
-    db.query("SELECT * FROM gigs WHERE id = ?", [req.params.id], (err, result) => res.json(result[0]));
+    const sql = `
+        SELECT gigs.*, 
+               users.name as freelancer_name, 
+               users.profile_pic,
+               fp.bio, 
+               fp.skills as freelancer_skills,
+               fp.skill_score
+        FROM gigs 
+        JOIN users ON gigs.freelancer_id = users.id 
+        LEFT JOIN freelancer_profiles fp ON users.id = fp.user_id
+        WHERE gigs.id = ?
+    `;
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        res.json(result[0]);
+    });
 });
 
 app.put('/api/gigs/:id', upload.single('image'), (req, res) => {
@@ -256,15 +271,73 @@ app.post('/api/orders/hire', (req, res) => {
 });
 
 app.get('/api/orders/freelancer/:id', (req, res) => {
-    db.query(`SELECT orders.*, requirements.title as job_title, users.name as client_name FROM orders 
+    db.query(`SELECT orders.*, requirements.title as job_title, requirements.description as job_description, users.name as client_name FROM orders 
               JOIN requirements ON orders.requirement_id = requirements.id JOIN users ON orders.client_id = users.id 
-              WHERE orders.freelancer_id = ? ORDER BY orders.created_at DESC`, [req.params.id], (err, results) => res.json(results));
+              WHERE orders.freelancer_id = ? AND orders.status != 'inquiry' ORDER BY orders.created_at DESC`, [req.params.id], (err, results) => res.json(results));
 });
 
 app.get('/api/orders/client/:id', (req, res) => {
     db.query(`SELECT orders.*, requirements.title as job_title, users.name as freelancer_name FROM orders 
               JOIN requirements ON orders.requirement_id = requirements.id JOIN users ON orders.freelancer_id = users.id 
-              WHERE orders.client_id = ? ORDER BY orders.created_at DESC`, [req.params.id], (err, results) => res.json(results));
+              WHERE orders.client_id = ? AND orders.status != 'inquiry' ORDER BY orders.created_at DESC`, [req.params.id], (err, results) => res.json(results));
+});
+
+// --- NEW FEATURES: DIRECT ORDER & CHAT ---
+
+// 1. DIRECT GIG ORDER (Creates Requirement -> Bid -> Order chain)
+app.post('/api/orders', (req, res) => {
+    const { client_id, freelancer_id, job_title, total_price, deadline } = req.body;
+
+    // 1. Create Requirement
+    db.query("INSERT INTO requirements (client_id, title, description, deadline) VALUES (?, ?, 'Direct Order', ?)",
+        [client_id, job_title, deadline], (err, resReq) => {
+            if (err) return res.status(500).json(err);
+            const reqId = resReq.insertId;
+
+            // 2. Create Placeholder Bid
+            db.query("INSERT INTO bids (requirement_id, freelancer_id, price, delivery_days, message) VALUES (?, ?, ?, 3, 'Direct Order')",
+                [reqId, freelancer_id, total_price], (err, resBid) => {
+                    if (err) return res.status(500).json(err);
+                    const bidId = resBid.insertId;
+
+                    // 3. Create Order
+                    db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status) VALUES (?, ?, ?, ?, ?, 'in_progress')",
+                        [reqId, client_id, freelancer_id, bidId, total_price], (err) => {
+                            if (err) return res.status(500).json(err);
+                            notify(freelancer_id, 'order', `New Order: ${job_title}`);
+                            res.json({ message: "Order Placed" });
+                        });
+                });
+        });
+});
+
+// 2. START CHAT (create inquiry)
+app.post('/api/chat/start', (req, res) => {
+    const { client_id, freelancer_id, gig_id, gig_title } = req.body;
+
+    // Check if chat already exists
+    const checkSql = `
+        SELECT o.id FROM orders o 
+        JOIN requirements r ON o.requirement_id = r.id
+        WHERE o.client_id = ? AND o.freelancer_id = ? AND (o.status = 'inquiry' OR o.status = 'in_progress')
+        LIMIT 1
+    `;
+
+    db.query(checkSql, [client_id, freelancer_id], (err, data) => {
+        if (data && data.length > 0) return res.json({ orderId: data[0].id });
+
+        // Create new inquiry
+        db.query("INSERT INTO requirements (client_id, title, description) VALUES (?, ?, 'Inquiry')", [client_id, `Inquiry: ${gig_title}`], (err, resReq) => {
+            if (err) return res.status(500).json(err);
+            const reqId = resReq.insertId;
+
+            db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, total_price, status) VALUES (?, ?, ?, 0, 'inquiry')",
+                [reqId, client_id, freelancer_id], (err, resOrd) => {
+                    if (err) return res.status(500).json(err);
+                    res.json({ orderId: resOrd.insertId });
+                });
+        });
+    });
 });
 
 // GET MESSAGES

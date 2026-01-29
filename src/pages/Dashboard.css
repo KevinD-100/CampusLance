@@ -384,7 +384,7 @@
 
 /* Gigs Grid */
 .gigs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 25px; }
-.gig-card { background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #F1F5F9; transition: transform 0.2s; }
+.gig-card { position: relative; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.05); border: 1px solid #F1F5F9; transition: transform 0.2s; }
 .gig-card:hover { transform: translateY(-5px); }
 .gig-img { width: 100%; height: 160px; object-fit: cover; }
 .gig-info { padding: 15px; }
