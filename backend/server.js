@@ -28,7 +28,12 @@ db.connect((err) => {
 // FILE UPLOAD CONFIG
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, 'uploads/'),
-    filename: (req, file, cb) => cb(null, 'file-' + Date.now() + path.extname(file.originalname))
+    filename: (req, file, cb) => {
+        // Sanitize filename and use lowercase extension
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, 'file-' + uniqueSuffix + ext);
+    }
 });
 const upload = multer({ storage: storage });
 
@@ -110,7 +115,7 @@ app.post('/api/auth/reset-password', (req, res) => {
 // 1. CREATE GIG (Professional)
 app.post('/api/gigs', upload.single('image'), (req, res) => {
     const { freelancer_id, title, description, price, delivery_days, category, revisions, requirements, skills } = req.body;
-    const image_url = req.file ? req.file.path : null; // Cloudinary URL
+    const image_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
 
     const sql = `
         INSERT INTO gigs 

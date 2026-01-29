@@ -288,7 +288,7 @@ const FreelancerDash = ({ user, section }) => {
       <div className="gigs-list-vertical">
         {myGigs.map(gig => (
           <div key={gig.id} className="gig-row-card">
-            <img src={gig.image_url || "https://placehold.co/100"} alt="Gig" />
+            <img src={gig.image_url || "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="} alt="Gig" onError={(e) => e.target.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="} />
             <div className="gig-details"><h4>{gig.title}</h4><p>₹{gig.price}</p></div>
             <div className="gig-actions">
               <button className="btn-small" onClick={() => navigate(`/edit-gig/${gig.id}`)}>Edit</button>

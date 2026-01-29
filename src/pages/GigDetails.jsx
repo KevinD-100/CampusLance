@@ -117,10 +117,10 @@ const GigDetails = () => {
                     {/* IMAGE CARD */}
                     <div style={{ background: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', marginBottom: '30px' }}>
                         <img
-                            src={gig.image_url || "https://via.placeholder.com/800x400"}
+                            src={gig.image_url || "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="}
                             alt={gig.title}
                             style={{ width: '100%', height: '450px', objectFit: 'cover' }}
-                            onError={(e) => e.target.src = "https://via.placeholder.com/800x400"}
+                            onError={(e) => e.target.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4MDAiIGhlaWdodD0iNDAwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="}
                         />
                     </div>
 

@@ -130,41 +130,7 @@ const ClientDash = ({ user, section }) => {
   // --- SECTIONS ---
 
   // 1. EXPLORE SECTION
-  const ExploreSection = () => (
-    <div className="animate-fade-in">
-      {/* FILTER BAR */}
-      <div className="filter-bar" style={{ display: 'flex', gap: '10px', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', flexWrap: 'wrap' }}>
-        <input
-          type="text" placeholder="Search services..."
-          className="form-input" style={{ flex: 2 }}
-          value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })}
-        />
-        <select className="form-input" style={{ flex: 1 }} value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })}>
-          <option value="All">All Categories</option>
-          <option value="Development">Development</option>
-          <option value="Design">Design</option>
-          <option value="Marketing">Marketing</option>
-          <option value="Writing">Writing</option>
-        </select>
-        <input type="number" placeholder="Min ₹" className="form-input" style={{ width: '80px' }} value={filters.min} onChange={e => setFilters({ ...filters, min: e.target.value })} />
-        <input type="number" placeholder="Max ₹" className="form-input" style={{ width: '80px' }} value={filters.max} onChange={e => setFilters({ ...filters, max: e.target.value })} />
-        <button onClick={refreshData} className="create-btn-primary" style={{ margin: 0 }}>Apply</button>
-      </div>
 
-      <div className="gigs-grid" style={{ marginTop: '20px' }}>
-        {gigs.map(gig => {
-          const isFav = favorites.includes(gig.freelancer_id);
-          return (
-            <div key={gig.id} className="gig-card">
-              <img src={gig.image_url || `https://via.placeholder.com/400`} alt={gig.title} className="gig-img" onError={(e) => e.target.src = "https://via.placeholder.com/400"} />
-              <div className="gig-info"><h4>{gig.title}</h4><div className="gig-meta"><span onClick={() => setViewProfileId(gig.freelancer_id)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>👤 {gig.freelancer_name}</span><span>⭐ 5.0</span></div><div className="gig-footer"><span className="gig-price">₹{gig.price}</span><button className="btn-small outline" onClick={() => navigate(`/gig/${gig.id}`)}>View Details</button></div></div>
-              <button className={`fav-btn ${isFav ? 'active' : ''}`} onClick={() => toggleFavorite(gig.freelancer_id)} style={{ color: isFav ? '#E53E3E' : '#CBD5E0' }}>♥</button>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
 
   // 2. MY JOBS & BIDS SECTION
   const JobPostsSection = () => {
@@ -325,7 +291,44 @@ const ClientDash = ({ user, section }) => {
   return (
     <div className="dashboard-content">
       <div className="tab-content">
-        {(section === 'explore' || section === 'dashboard') && <ExploreSection />}
+        {/* 1. EXPLORE SECTION (Inlined to fix focus issue) */}
+        {(section === 'explore' || section === 'dashboard') && (
+          <div className="animate-fade-in">
+            {/* FILTER BAR */}
+            <div className="filter-bar" style={{ display: 'flex', gap: '10px', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', flexWrap: 'wrap' }}>
+              <input
+                type="text" placeholder="Search services..."
+                className="form-input" style={{ flex: 2 }}
+                value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })}
+              />
+              <select className="form-select" style={{ flex: 1 }} value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })}>
+                <option value="All">All Categories</option>
+                <option value="Development">Development</option>
+                <option value="Design">Design</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Writing">Writing</option>
+                <option value="Others">Others</option>
+              </select>
+              <input type="number" placeholder="Min ₹" className="form-input" style={{ width: '80px' }} value={filters.min} onChange={e => setFilters({ ...filters, min: e.target.value })} />
+              <input type="number" placeholder="Max ₹" className="form-input" style={{ width: '80px' }} value={filters.max} onChange={e => setFilters({ ...filters, max: e.target.value })} />
+              <button onClick={refreshData} className="create-btn-primary" style={{ margin: 0 }}>Apply</button>
+            </div>
+
+            <div className="gigs-grid" style={{ marginTop: '20px' }}>
+              {gigs.map(gig => {
+                const isFav = favorites.includes(gig.freelancer_id);
+                return (
+                  <div key={gig.id} className="gig-card">
+                    <img src={gig.image_url || "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="} alt={gig.title} className="gig-img" onError={(e) => e.target.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="} />
+                    <div className="gig-info"><h4>{gig.title}</h4><div className="gig-meta"><span onClick={() => setViewProfileId(gig.freelancer_id)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>👤 {gig.freelancer_name}</span><span>⭐ 5.0</span></div><div className="gig-footer"><span className="gig-price">₹{gig.price}</span><button className="btn-small outline" onClick={() => navigate(`/gig/${gig.id}`)}>View Details</button></div></div>
+                    <button className={`fav-btn ${isFav ? 'active' : ''}`} onClick={() => toggleFavorite(gig.freelancer_id)} style={{ color: isFav ? '#E53E3E' : '#CBD5E0' }}>♥</button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
         {section === 'jobs' && <JobPostsSection />}
         {section === 'orders' && <OrdersSection />}
       </div>

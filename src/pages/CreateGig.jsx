@@ -101,6 +101,7 @@ const CreateGig = () => {
                   <option value="Writing">✍️ Writing & Translation</option>
                   <option value="AI & Data">🤖 AI & Data Science</option>
                   <option value="Photography">📷 Photography</option>
+                  <option value="Others">Others</option>
                 </select>
               </div>
               <div className="form-section">
