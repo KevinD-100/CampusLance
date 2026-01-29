@@ -2,7 +2,7 @@ const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
-const multer = require('multer'); 
+const multer = require('multer');
 const path = require('path');
 
 const app = express();
@@ -44,7 +44,7 @@ const notify = (userId, type, message) => {
     // Payload stored as JSON string for simplicity
     const payload = JSON.stringify({ message });
     db.query(sql, [userId, type, payload], (err) => {
-        if(err) console.error("Notification Error:", err);
+        if (err) console.error("Notification Error:", err);
     });
 };
 
@@ -117,7 +117,7 @@ app.post('/api/gigs', upload.single('image'), (req, res) => {
         (freelancer_id, title, description, price, delivery_days, image_url, category, revisions, requirements, skills) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    
+
     db.query(sql, [freelancer_id, title, description, price, delivery_days, image_url, category, revisions, requirements, skills], (err, result) => {
         if (err) return res.status(500).json({ error: err.message });
         res.status(201).json({ message: "Gig Created", gigId: result.insertId });
@@ -125,8 +125,30 @@ app.post('/api/gigs', upload.single('image'), (req, res) => {
 });
 
 app.get('/api/gigs', (req, res) => {
-    db.query("SELECT gigs.*, users.name as freelancer_name FROM gigs JOIN users ON gigs.freelancer_id = users.id ORDER BY gigs.created_at DESC", 
-    (err, results) => { if(err) return res.status(500).json(err); res.json(results); });
+    const { category, min, max, search } = req.query;
+    let sql = "SELECT gigs.*, users.name as freelancer_name FROM gigs JOIN users ON gigs.freelancer_id = users.id WHERE 1=1";
+    const params = [];
+
+    if (category && category !== 'All') { sql += " AND gigs.category = ?"; params.push(category); }
+    if (min) { sql += " AND gigs.price >= ?"; params.push(min); }
+    if (max) { sql += " AND gigs.price <= ?"; params.push(max); }
+    if (search) { sql += " AND (gigs.title LIKE ? OR gigs.description LIKE ?)"; params.push(`%${search}%`, `%${search}%`); }
+
+    sql += " ORDER BY gigs.created_at DESC";
+
+    db.query(sql, params, (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+app.post('/api/quiz/submit', (req, res) => {
+    const { user_id, score } = req.body;
+    // Add score to existing skill_score (simple gamification)
+    db.query("UPDATE freelancer_profiles SET skill_score = skill_score + ? WHERE user_id = ?", [score, user_id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Score Updated", addedPoints: score });
+    });
 });
 
 app.get('/api/gigs/my/:id', (req, res) => {
@@ -143,44 +165,48 @@ app.put('/api/gigs/:id', upload.single('image'), (req, res) => {
     let params = [title, description, price, delivery_days];
     if (req.file) { sql += ", image_url=?"; params.push(`http://localhost:5000/uploads/${req.file.filename}`); }
     sql += " WHERE id=?"; params.push(req.params.id);
-    db.query(sql, params, (err) => { if(err) return res.status(500).json(err); res.json({message:"Updated"}); });
+    db.query(sql, params, (err) => { if (err) return res.status(500).json(err); res.json({ message: "Updated" }); });
 });
 
 app.post('/api/gigs/duplicate/:id', (req, res) => {
     db.query("SELECT * FROM gigs WHERE id = ?", [req.params.id], (err, data) => {
         if (err || data.length === 0) return res.status(500).json({ error: "Gig not found" });
         const original = data[0];
-        db.query("INSERT INTO gigs (freelancer_id, title, description, price, delivery_days, image_url) VALUES (?, ?, ?, ?, ?, ?)", 
-        [original.freelancer_id, "Copy of " + original.title, original.description, original.price, original.delivery_days, original.image_url], 
-        (err, result) => res.json({ message: "Duplicated" }));
+        db.query("INSERT INTO gigs (freelancer_id, title, description, price, delivery_days, image_url) VALUES (?, ?, ?, ?, ?, ?)",
+            [original.freelancer_id, "Copy of " + original.title, original.description, original.price, original.delivery_days, original.image_url],
+            (err, result) => res.json({ message: "Duplicated" }));
     });
 });
 
 // --- REQUIREMENTS & BIDS ---
 app.post('/api/requirements', (req, res) => {
     const { client_id, title, description, deadline } = req.body;
-    db.query("INSERT INTO requirements (client_id, title, description, deadline) VALUES (?, ?, ?, ?)", 
-    [client_id, title, description, deadline], (err, result) => {
-        if(err) return res.status(500).json(err); res.status(201).json({ message: "Posted" });
-    });
+    db.query("INSERT INTO requirements (client_id, title, description, deadline) VALUES (?, ?, ?, ?)",
+        [client_id, title, description, deadline], (err, result) => {
+            if (err) return res.status(500).json(err); res.status(201).json({ message: "Posted" });
+        });
 });
 
+// 5. Get Requirements (Find Work - SHOW ALL)
 app.get('/api/requirements', (req, res) => {
+    // Show ALL jobs, ordered by newest. 
+    // Join users to get client name & pic.
     const sql = `
         SELECT r.*, u.name as client_name, u.profile_pic
         FROM requirements r
         JOIN users u ON r.client_id = u.id
         LEFT JOIN orders o ON r.id = o.requirement_id
         WHERE o.id IS NULL
+        AND (r.deadline >= CURDATE() OR r.deadline IS NULL)
         ORDER BY r.created_at DESC
     `;
-    // Logic: LEFT JOIN orders... WHERE o.id IS NULL means "Keep only rows where no order exists"
-    
+
     db.query(sql, (err, results) => {
         if (err) {
             console.error("❌ Fetch Jobs Error:", err);
             return res.status(500).json({ error: err.message });
         }
+        console.log(`✅ Sending ${results.length} jobs to frontend.`);
         res.json(results);
     });
 });
@@ -193,14 +219,14 @@ app.post('/api/bids', (req, res) => {
     const { requirement_id, freelancer_id, price, delivery_days, message } = req.body;
     db.query("SELECT * FROM bids WHERE requirement_id = ? AND freelancer_id = ?", [requirement_id, freelancer_id], (err, data) => {
         if (data.length > 0) return res.status(400).json({ error: "Already bid" });
-        db.query("INSERT INTO bids (requirement_id, freelancer_id, price, delivery_days, message) VALUES (?, ?, ?, ?, ?)", 
-        [requirement_id, freelancer_id, price, delivery_days, message], (err) => {
-            // Notify Client
-            db.query("SELECT client_id FROM requirements WHERE id = ?", [requirement_id], (e, r) => {
-                notify(r[0].client_id, 'bid', `New bid received on your job!`);
+        db.query("INSERT INTO bids (requirement_id, freelancer_id, price, delivery_days, message) VALUES (?, ?, ?, ?, ?)",
+            [requirement_id, freelancer_id, price, delivery_days, message], (err) => {
+                // Notify Client
+                db.query("SELECT client_id FROM requirements WHERE id = ?", [requirement_id], (e, r) => {
+                    notify(r[0].client_id, 'bid', `New bid received on your job!`);
+                });
+                res.json({ message: "Bid Submitted" });
             });
-            res.json({ message: "Bid Submitted" });
-        });
     });
 });
 
@@ -209,7 +235,7 @@ app.get('/api/bids/job/:id', (req, res) => {
         SELECT bids.*, users.name as freelancer_name, users.profile_pic, users.id as user_id 
         FROM bids 
         JOIN users ON bids.freelancer_id = users.id 
-        WHERE bids.requirement_id = ? 
+        WHERE bids.requirement_id = ?
         ORDER BY bids.price ASC
     `;
     db.query(sql, [req.params.id], (err, results) => {
@@ -221,12 +247,12 @@ app.get('/api/bids/job/:id', (req, res) => {
 // --- ORDERS & CHAT & DELIVERY ---
 app.post('/api/orders/hire', (req, res) => {
     const { requirement_id, client_id, freelancer_id, bid_id, price } = req.body;
-    db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status) VALUES (?, ?, ?, ?, ?, 'in_progress')", 
-    [requirement_id, client_id, freelancer_id, bid_id, price], (err) => {
-        if(err) return res.status(500).json(err);
-        notify(freelancer_id, 'order', `You have been hired!`);
-        res.json({ message: "Hired!" });
-    });
+    db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status) VALUES (?, ?, ?, ?, ?, 'in_progress')",
+        [requirement_id, client_id, freelancer_id, bid_id, price], (err) => {
+            if (err) return res.status(500).json(err);
+            notify(freelancer_id, 'order', `You have been hired!`);
+            res.json({ message: "Hired!" });
+        });
 });
 
 app.get('/api/orders/freelancer/:id', (req, res) => {
@@ -247,7 +273,7 @@ app.get('/api/messages/:orderId', (req, res) => {
         SELECT m.id, m.order_id, m.sender_id, m.text, m.sent_date, m.sent_time, u.name as sender_name 
         FROM messages m
         LEFT JOIN users u ON m.sender_id = u.id 
-        WHERE m.order_id = ? 
+        WHERE m.order_id = ?
         ORDER BY m.sent_date ASC, m.sent_time ASC
     `;
     db.query(sql, [req.params.orderId], (err, results) => {
@@ -263,15 +289,15 @@ app.post('/api/messages', (req, res) => {
     const sent_date = now.toISOString().split('T')[0];
     const sent_time = now.toTimeString().split(' ')[0];
 
-    db.query("INSERT INTO messages (order_id, sender_id, text, sent_date, sent_time) VALUES (?, ?, ?, ?, ?)", 
-    [order_id, sender_id, text, sent_date, sent_time], (err) => {
-        // Notify Receiver
-        db.query("SELECT client_id, freelancer_id FROM orders WHERE id = ?", [order_id], (e, r) => {
-            const receiver = (sender_id == r[0].client_id) ? r[0].freelancer_id : r[0].client_id;
-            notify(receiver, 'message', `New message received`);
+    db.query("INSERT INTO messages (order_id, sender_id, text, sent_date, sent_time) VALUES (?, ?, ?, ?, ?)",
+        [order_id, sender_id, text, sent_date, sent_time], (err) => {
+            // Notify Receiver
+            db.query("SELECT client_id, freelancer_id FROM orders WHERE id = ?", [order_id], (e, r) => {
+                const receiver = (sender_id == r[0].client_id) ? r[0].freelancer_id : r[0].client_id;
+                notify(receiver, 'message', `New message received`);
+            });
+            res.json({ message: "Sent" });
         });
-        res.json({ message: "Sent" });
-    });
 });
 
 // DELIVER WORK
@@ -283,15 +309,15 @@ app.post('/api/orders/deliver', upload.single('workFile'), (req, res) => {
     const sent_date = now.toISOString().split('T')[0];
     const sent_time = now.toTimeString().split(' ')[0];
 
-    db.query("INSERT INTO messages (order_id, sender_id, text, file_id, sent_date, sent_time) VALUES (?, ?, ?, NULL, ?, ?)", 
-    [order_id, sender_id, msgText, sent_date, sent_time], (err) => {
-        if(err) return res.status(500).json({ error: err.message });
-        db.query("UPDATE orders SET status = 'final_delivered' WHERE id = ?", [order_id], () => {
-            // Notify Client
-            db.query("SELECT client_id FROM orders WHERE id = ?", [order_id], (e, r) => notify(r[0].client_id, 'delivery', 'Freelancer delivered work!'));
-            res.json({ message: "Delivered" });
+    db.query("INSERT INTO messages (order_id, sender_id, text, file_id, sent_date, sent_time) VALUES (?, ?, ?, NULL, ?, ?)",
+        [order_id, sender_id, msgText, sent_date, sent_time], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            db.query("UPDATE orders SET status = 'final_delivered' WHERE id = ?", [order_id], () => {
+                // Notify Client
+                db.query("SELECT client_id FROM orders WHERE id = ?", [order_id], (e, r) => notify(r[0].client_id, 'delivery', 'Freelancer delivered work!'));
+                res.json({ message: "Delivered" });
+            });
         });
-    });
 });
 
 // CLIENT REVIEW
@@ -302,14 +328,14 @@ app.post('/api/orders/review', (req, res) => {
     const sent_date = now.toISOString().split('T')[0];
     const sent_time = now.toTimeString().split(' ')[0];
 
-    db.query("INSERT INTO messages (order_id, sender_id, text, sent_date, sent_time) VALUES (?, ?, ?, ?, ?)", 
-    [order_id, client_id, msgText, sent_date, sent_time], (err) => {
-        db.query("UPDATE orders SET status = ? WHERE id = ?", [status, order_id], () => {
-            // Notify Freelancer
-            db.query("SELECT freelancer_id FROM orders WHERE id = ?", [order_id], (e, r) => notify(r[0].freelancer_id, 'review', status === 'completed' ? 'Order Completed!' : 'Revision Requested'));
-            res.json({ message: "Updated" });
+    db.query("INSERT INTO messages (order_id, sender_id, text, sent_date, sent_time) VALUES (?, ?, ?, ?, ?)",
+        [order_id, client_id, msgText, sent_date, sent_time], (err) => {
+            db.query("UPDATE orders SET status = ? WHERE id = ?", [status, order_id], () => {
+                // Notify Freelancer
+                db.query("SELECT freelancer_id FROM orders WHERE id = ?", [order_id], (e, r) => notify(r[0].freelancer_id, 'review', status === 'completed' ? 'Order Completed!' : 'Revision Requested'));
+                res.json({ message: "Updated" });
+            });
         });
-    });
 });
 
 // --- NOTIFICATIONS ---
@@ -320,15 +346,15 @@ app.get('/api/notifications/:userId', (req, res) => {
 // Mark as Read
 app.put('/api/notifications/read/all/:userId', (req, res) => {
     db.query("UPDATE notifications SET is_read = 1 WHERE user_id = ?", [req.params.userId], (err) => {
-        if(err) return res.status(500).json({ error: err.message });
+        if (err) return res.status(500).json({ error: err.message });
         res.json({ success: true });
     });
 });
 
 // --- PROFILE ---
 app.get('/api/profile/:id', (req, res) => {
-    db.query(`SELECT u.id, u.name, u.email, u.role, u.profile_pic, fp.bio, fp.skills FROM users u LEFT JOIN freelancer_profiles fp ON u.id = fp.user_id WHERE u.id = ?`, 
-    [req.params.id], (err, result) => res.json(result[0]));
+    db.query(`SELECT u.id, u.name, u.email, u.role, u.profile_pic, fp.bio, fp.skills FROM users u LEFT JOIN freelancer_profiles fp ON u.id = fp.user_id WHERE u.id = ?`,
+        [req.params.id], (err, result) => res.json(result[0]));
 });
 
 app.put('/api/profile/:id', upload.single('profilePic'), (req, res) => {
@@ -342,17 +368,17 @@ app.put('/api/profile/:id', upload.single('profilePic'), (req, res) => {
     userSql += " WHERE id = ?"; userParams.push(userId);
 
     db.query(userSql, userParams, () => {
-        db.query(`INSERT INTO freelancer_profiles (user_id, bio, skills) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE bio = VALUES(bio), skills = VALUES(skills)`, 
-        [userId, bio, skills], () => res.json({ message: "Profile Updated", newPic: profile_pic_url }));
+        db.query(`INSERT INTO freelancer_profiles (user_id, bio, skills) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE bio = VALUES(bio), skills = VALUES(skills)`,
+            [userId, bio, skills], () => res.json({ message: "Profile Updated", newPic: profile_pic_url }));
     });
 });
 
 app.post('/api/portfolio', upload.single('image'), (req, res) => {
     const { freelancer_id, title, category, description } = req.body;
     const image_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
-    const descWithImg = image_url + "|||" + description; 
-    db.query("INSERT INTO portfolio_items (freelancer_id, title, category, description) VALUES (?, ?, ?, ?)", 
-    [freelancer_id, title, category, descWithImg], (err) => res.json({message:"Added"}));
+    const descWithImg = image_url + "|||" + description;
+    db.query("INSERT INTO portfolio_items (freelancer_id, title, category, description) VALUES (?, ?, ?, ?)",
+        [freelancer_id, title, category, descWithImg], (err) => res.json({ message: "Added" }));
 });
 
 app.get('/api/portfolio/:id', (req, res) => {
@@ -375,7 +401,7 @@ app.get('/api/admin/users', (req, res) => {
 });
 
 app.delete('/api/admin/user/:id', (req, res) => {
-    db.query("DELETE FROM users WHERE id = ?", [req.params.id], () => res.json({message:"Deleted"}));
+    db.query("DELETE FROM users WHERE id = ?", [req.params.id], () => res.json({ message: "Deleted" }));
 });
 
 app.get('/api/admin/gigs', (req, res) => {
@@ -383,7 +409,7 @@ app.get('/api/admin/gigs', (req, res) => {
 });
 
 app.delete('/api/admin/gig/:id', (req, res) => {
-    db.query("DELETE FROM gigs WHERE id = ?", [req.params.id], () => res.json({message:"Deleted"}));
+    db.query("DELETE FROM gigs WHERE id = ?", [req.params.id], () => res.json({ message: "Deleted" }));
 });
 
 app.put('/api/admin/user/status/:id', (req, res) => {
@@ -419,7 +445,7 @@ app.get('/api/admin/sprint-summary', (req, res) => {
                 sprint_week: "Week 12 (Current)",
                 orders_completed: completed,
                 revenue_flow: res2[0].total || 0,
-                active_freelancers: 5 
+                active_freelancers: 5
             });
         });
     });
@@ -427,7 +453,7 @@ app.get('/api/admin/sprint-summary', (req, res) => {
 // DELETE GIG (Freelancer)
 app.delete('/api/gigs/:id', (req, res) => {
     db.query("DELETE FROM gigs WHERE id = ?", [req.params.id], (err) => {
-        if(err) return res.status(500).json({ error: err.message });
+        if (err) return res.status(500).json({ error: err.message });
         res.json({ message: "Gig Deleted" });
     });
 });
@@ -438,7 +464,7 @@ app.delete('/api/gigs/:id', (req, res) => {
 // 1. Toggle Favorite (Add/Remove)
 app.post('/api/favorites', (req, res) => {
     const { user_id, target_id, fav_type } = req.body;
-    
+
     // Check if already favorite
     db.query("SELECT * FROM favorites WHERE user_id=? AND target_id=? AND fav_type=?", [user_id, target_id, fav_type], (err, data) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -465,15 +491,15 @@ app.get('/api/favorites/:userId', (req, res) => {
 // 3. Submit Rating
 app.post('/api/ratings', (req, res) => {
     const { order_id, client_id, freelancer_id, stars, comment } = req.body;
-    db.query("INSERT INTO ratings (order_id, client_id, freelancer_id, stars, comment) VALUES (?, ?, ?, ?, ?)", 
-    [order_id, client_id, freelancer_id, stars, comment], (err) => {
-        if(err) return res.status(500).json({error: err.message});
-        
-        // Update Skill Score (+2 per star)
-        db.query("UPDATE freelancer_profiles SET skill_score = skill_score + ? WHERE user_id = ?", [stars * 2, freelancer_id]);
-        
-        res.json({ message: "Rating Submitted" });
-    });
+    db.query("INSERT INTO ratings (order_id, client_id, freelancer_id, stars, comment) VALUES (?, ?, ?, ?, ?)",
+        [order_id, client_id, freelancer_id, stars, comment], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            // Update Skill Score (+2 per star)
+            db.query("UPDATE freelancer_profiles SET skill_score = skill_score + ? WHERE user_id = ?", [stars * 2, freelancer_id]);
+
+            res.json({ message: "Rating Submitted" });
+        });
 });
 
 const PORT = 5000;

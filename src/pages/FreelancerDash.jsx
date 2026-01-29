@@ -2,61 +2,78 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
 import ChatWindow from '../components/ChatWindow';
+import BidModal from '../components/BidModal';
+import ManageOrderModal from '../components/ManageOrderModal';
 
-const FreelancerDash = ({ user }) => {
+const FreelancerDash = ({ user, section }) => {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('overview');
-  
+  const [activeTab, setActiveTab] = useState(section || 'overview');
+
   // Data State
   const [myGigs, setMyGigs] = useState([]);
   const [requests, setRequests] = useState([]);
   const [orders, setOrders] = useState([]);
   const [portfolio, setPortfolio] = useState([]);
-  const [totalEarnings, setTotalEarnings] = useState(0); 
+  const [totalEarnings, setTotalEarnings] = useState(0);
 
   // UI State
-  const [bidModal, setBidModal] = useState(null);
-  const [bidData, setBidData] = useState({ price: '', days: '', msg: '' });
+  const [bidModalReq, setBidModalReq] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Manage Order
   const [manageOrder, setManageOrder] = useState(null);
-  const [deliveryType, setDeliveryType] = useState('draft'); 
+  const [deliveryType, setDeliveryType] = useState('draft');
   const [deliveryNote, setDeliveryNote] = useState('');
   const [deliveryFile, setDeliveryFile] = useState(null);
   const [revisionFeedback, setRevisionFeedback] = useState("");
 
-  // Chat
+  // Chat State
   const [chatOrder, setChatOrder] = useState(null);
 
   // Profile Modal State
   const [viewProfileId, setViewProfileId] = useState(null);
   const [profileData, setProfileData] = useState(null);
 
-  // 1. FETCH DATA
+  // 1. SYNC SIDEBAR
+  useEffect(() => {
+    if (section) setActiveTab(section);
+  }, [section]);
+
+  // 2. FETCH DATA
   const refreshData = () => {
     if (user?.id) {
-        setLoading(true);
-        fetch(`http://localhost:5000/api/gigs/my/${user.id}`).then(res => res.json()).then(d => { if(Array.isArray(d)) setMyGigs(d); });
-        
-        fetch('http://localhost:5000/api/requirements').then(res => res.json()).then(d => { if(Array.isArray(d)) setRequests(d); });
-        
-        fetch(`http://localhost:5000/api/portfolio/${user.id}`).then(res => res.json()).then(d => { if(Array.isArray(d)) setPortfolio(d); });
-        
-        fetch(`http://localhost:5000/api/orders/freelancer/${user.id}`)
-            .then(res => res.json())
-            .then(data => {
-                if(Array.isArray(data)) {
-                    setOrders(data);
-                    // Calculate Earnings
-                    const earnings = data
-                        .filter(o => o.status === 'completed')
-                        .reduce((sum, o) => sum + parseFloat(o.total_price), 0);
-                    setTotalEarnings(earnings);
-                }
-                setLoading(false);
-            })
-            .catch(err => console.error("Orders Error:", err));
+      setLoading(true);
+
+      // Fetch My Gigs
+      fetch(`http://localhost:5000/api/gigs/my/${user.id}`)
+        .then(res => res.json())
+        .then(d => { if (Array.isArray(d)) setMyGigs(d); });
+
+      // Fetch Jobs
+      fetch('http://localhost:5000/api/requirements')
+        .then(res => res.json())
+        .then(data => {
+          setRequests(Array.isArray(data) ? data : []);
+        })
+        .catch(err => console.error("❌ Req fetch error:", err));
+
+      // Fetch Portfolio
+      fetch(`http://localhost:5000/api/portfolio/${user.id}`)
+        .then(res => res.json())
+        .then(d => { if (Array.isArray(d)) setPortfolio(d); });
+
+      // Fetch Orders & Calc Earnings
+      fetch(`http://localhost:5000/api/orders/freelancer/${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            setOrders(data);
+            const earnings = data.filter(o => o.status === 'completed').reduce((sum, o) => sum + parseFloat(o.total_price), 0);
+            setTotalEarnings(earnings);
+          }
+          setLoading(false);
+        })
+        .catch(err => console.error("Orders Error:", err));
     }
   };
 
@@ -65,44 +82,49 @@ const FreelancerDash = ({ user }) => {
   // Fetch Profile for Modal
   useEffect(() => {
     if (viewProfileId) {
-        fetch(`http://localhost:5000/api/profile/${viewProfileId}`)
-            .then(res => res.json())
-            .then(data => setProfileData(data));
+      fetch(`http://localhost:5000/api/profile/${viewProfileId}`)
+        .then(res => res.json())
+        .then(data => setProfileData(data));
     }
   }, [viewProfileId]);
 
   // Fetch Revision Feedback
   useEffect(() => {
     if (manageOrder && manageOrder.status === 'revision_requested') {
-        fetch(`http://localhost:5000/api/messages/${manageOrder.id}`)
-            .then(res => res.json())
-            .then(msgs => {
-                const revMsg = [...msgs].reverse().find(m => m.text.includes("⚠️ REVISION REQUESTED:"));
-                if (revMsg) setRevisionFeedback(revMsg.text.replace("⚠️ REVISION REQUESTED:", "").trim());
-            });
+      fetch(`http://localhost:5000/api/messages/${manageOrder.id}`)
+        .then(res => res.json())
+        .then(msgs => {
+          const revMsg = [...msgs].reverse().find(m => m.text.includes("⚠️ REVISION REQUESTED:"));
+          if (revMsg) setRevisionFeedback(revMsg.text.replace("⚠️ REVISION REQUESTED:", "").trim());
+        });
     }
   }, [manageOrder]);
 
   // Actions
   const handleDeleteGig = async (gigId) => {
-    if(!window.confirm("Are you sure you want to delete this gig?")) return;
+    if (!window.confirm("Are you sure you want to delete this gig?")) return;
     await fetch(`http://localhost:5000/api/gigs/${gigId}`, { method: 'DELETE' });
     refreshData();
   };
 
   const handleDuplicate = async (gigId) => {
-    if(!window.confirm("Duplicate this gig?")) return;
+    if (!window.confirm("Duplicate this gig?")) return;
     const res = await fetch(`http://localhost:5000/api/gigs/duplicate/${gigId}`, { method: 'POST' });
     if (res.ok) { alert("Gig Duplicated!"); refreshData(); }
   };
 
-  const submitBid = async (e) => {
-    e.preventDefault();
+  const handleBidSubmit = async (bidData) => {
     const res = await fetch('http://localhost:5000/api/bids', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requirement_id: bidModal.id, freelancer_id: user.id, price: bidData.price, delivery_days: bidData.days, message: bidData.msg })
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        requirement_id: bidModalReq.id,
+        freelancer_id: user.id,
+        price: bidData.price,
+        delivery_days: bidData.days,
+        message: bidData.msg
+      })
     });
-    if (res.ok) { alert("✅ Bid Submitted!"); setBidModal(null); }
+    if (res.ok) { alert("✅ Bid Submitted!"); setBidModalReq(null); }
   };
 
   const handleDeliverySubmit = async (e) => {
@@ -120,47 +142,99 @@ const FreelancerDash = ({ user }) => {
   };
 
   // --- SECTIONS ---
-  const OverviewSection = () => (
-    <div className="animate-fade-in">
-      <div className="stats-grid">
-        <div className="stat-card"><h3>💰 Total Earnings</h3><div className="value">₹{totalEarnings}</div></div>
-        <div className="stat-card"><h3>📦 Active Orders</h3><div className="value">{orders.filter(o => o.status !== 'completed').length}</div></div>
-        <div className="stat-card"><h3>✅ Completed</h3><div className="value">{orders.filter(o => o.status === 'completed').length}</div></div>
-      </div>
+  const OverviewSection = () => {
+    const [orderFilter, setOrderFilter] = useState('active'); // 'active' | 'past'
 
-      <div className="header-row"><h3 className="section-title">Active Orders</h3><button className="btn-small outline" onClick={refreshData}>Refresh</button></div>
-      
-      {orders.length === 0 ? <p style={{textAlign:'center', padding:'40px', color:'#A0AEC0', border:'2px dashed #E2E8F0', borderRadius:'12px'}}>No active orders. Start bidding!</p> : (
-        <div className="requests-grid" style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(350px, 1fr))', gap:'20px'}}>
-            {orders.map(order => (
-                <div key={order.id} className="job-card-expanded" style={{padding:'20px', border:'1px solid #E2E8F0', borderRadius:'12px', background:'white', boxShadow:'0 4px 10px rgba(0,0,0,0.03)', borderLeft: `5px solid ${order.status==='completed'?'#48BB78':'#3182CE'}`}}>
-                    <div style={{display:'flex', justifyContent:'space-between', marginBottom:'15px'}}>
-                        <div>
-                            <h4 style={{margin:0, color:'#2D3748'}}>{order.job_title}</h4>
-                            <span style={{fontSize:'0.8rem', color:'#718096'}}>Client: {order.client_name}</span>
-                        </div>
-                        <div style={{textAlign:'right'}}>
-                            <div style={{fontWeight:'bold', fontSize:'1.1rem'}}>₹{order.total_price}</div>
-                            <span className={`badge ${order.status === 'final_delivered' ? 'delivered' : order.status === 'revision_requested' ? 'dispute' : order.status === 'completed' ? 'active' : 'pending'}`}>
-                                {order.status.replace('_', ' ')}
-                            </span>
-                        </div>
-                    </div>
+    // Filter logic
+    const displayedOrders = orders.filter(o => {
+      if (orderFilter === 'active') return o.status !== 'completed' && o.status !== 'cancelled';
+      if (orderFilter === 'past') return o.status === 'completed' || o.status === 'cancelled';
+      return true;
+    });
 
-                    <div style={{display:'flex', gap:'10px', marginTop:'20px'}}>
-                        <button className="action-btn outline" style={{flex:1}} onClick={() => setChatOrder(order)}>💬 Chat</button>
-                        {order.status !== 'completed' && (
-                            <button className="action-btn success" style={{flex:1}} onClick={() => setManageOrder(order)}>
-                                🚀 Manage
-                            </button>
-                        )}
-                    </div>
-                </div>
-            ))}
+    return (
+      <div className="animate-fade-in">
+        <div className="stats-grid">
+          <div className="stat-card"><h3>💰 Total Earnings</h3><div className="value">₹{totalEarnings}</div></div>
+          <div className="stat-card"><h3>📦 Active Orders</h3><div className="value">{orders.filter(o => o.status !== 'completed').length}</div></div>
+          <div className="stat-card"><h3>✅ Completed</h3><div className="value">{orders.filter(o => o.status === 'completed').length}</div></div>
         </div>
-      )}
-    </div>
-  );
+
+        <div className="header-row" style={{ alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+            <h3 className="section-title" style={{ margin: 0 }}>My Orders</h3>
+            <div className="toggle-pill-container" style={{ background: '#EDF2F7', padding: '4px', borderRadius: '8px', display: 'flex' }}>
+              <button
+                onClick={() => setOrderFilter('active')}
+                style={{
+                  padding: '6px 15px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: orderFilter === 'active' ? 'white' : 'transparent',
+                  boxShadow: orderFilter === 'active' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+                  fontWeight: orderFilter === 'active' ? '600' : 'normal',
+                  cursor: 'pointer',
+                  color: orderFilter === 'active' ? '#2D3748' : '#718096'
+                }}
+              >
+                Running
+              </button>
+              <button
+                onClick={() => setOrderFilter('past')}
+                style={{
+                  padding: '6px 15px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: orderFilter === 'past' ? 'white' : 'transparent',
+                  boxShadow: orderFilter === 'past' ? '0 2px 5px rgba(0,0,0,0.05)' : 'none',
+                  fontWeight: orderFilter === 'past' ? '600' : 'normal',
+                  cursor: 'pointer',
+                  color: orderFilter === 'past' ? '#2D3748' : '#718096'
+                }}
+              >
+                Past
+              </button>
+            </div>
+          </div>
+          <button className="btn-small outline" onClick={refreshData}>Refresh</button>
+        </div>
+
+        {displayedOrders.length === 0 ? (
+          <p style={{ textAlign: 'center', padding: '40px', color: '#A0AEC0', border: '2px dashed #E2E8F0', borderRadius: '12px' }}>
+            {orderFilter === 'active' ? "No active orders. Apply for jobs!" : "No completed orders yet."}
+          </p>
+        ) : (
+          <div className="requests-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+            {displayedOrders.map(order => (
+              <div key={order.id} className="job-card-expanded" style={{ padding: '20px', border: '1px solid #E2E8F0', borderRadius: '12px', background: 'white', boxShadow: '0 4px 10px rgba(0,0,0,0.03)', borderLeft: `5px solid ${order.status === 'completed' ? '#48BB78' : '#3182CE'}` }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <div>
+                    <h4 style={{ margin: 0, color: '#2D3748' }}>{order.job_title}</h4>
+                    <span style={{ fontSize: '0.8rem', color: '#718096' }}>Client: {order.client_name}</span>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>₹{order.total_price}</div>
+                    <span className={`badge ${order.status === 'final_delivered' ? 'delivered' : order.status === 'revision_requested' ? 'dispute' : order.status === 'completed' ? 'active' : 'pending'}`}>
+                      {order.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <button className="action-btn outline" style={{ flex: 1 }} onClick={() => setChatOrder(order)}>💬 Chat</button>
+                  {order.status !== 'completed' && order.status !== 'cancelled' && (
+                    <button className="action-btn success" style={{ flex: 1 }} onClick={() => setManageOrder(order)}>
+                      🚀 Manage
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const GigsSection = () => (
     <div className="animate-fade-in">
@@ -168,12 +242,12 @@ const FreelancerDash = ({ user }) => {
       <div className="gigs-list-vertical">
         {myGigs.map(gig => (
           <div key={gig.id} className="gig-row-card">
-            <img src={gig.image_url || "https://placehold.co/100"} alt="Gig"/>
+            <img src={gig.image_url || "https://placehold.co/100"} alt="Gig" />
             <div className="gig-details"><h4>{gig.title}</h4><p>₹{gig.price}</p></div>
             <div className="gig-actions">
-                <button className="btn-small" onClick={() => navigate(`/edit-gig/${gig.id}`)}>Edit</button>
-                <button className="btn-small outline" onClick={() => handleDuplicate(gig.id)}>Duplicate</button>
-                <button className="btn-small outline" style={{color:'red', borderColor:'red'}} onClick={() => handleDeleteGig(gig.id)}>Delete</button>
+              <button className="btn-small" onClick={() => navigate(`/edit-gig/${gig.id}`)}>Edit</button>
+              <button className="btn-small outline" onClick={() => handleDuplicate(gig.id)}>Duplicate</button>
+              <button className="btn-small outline" style={{ color: 'red', borderColor: 'red' }} onClick={() => handleDeleteGig(gig.id)}>Delete</button>
             </div>
           </div>
         ))}
@@ -184,121 +258,181 @@ const FreelancerDash = ({ user }) => {
   const FindWorkSection = () => (
     <div className="animate-fade-in">
       <div className="header-row"><h3 className="section-title">Available Jobs</h3><button className="btn-small outline" onClick={refreshData}>Refresh Feed</button></div>
-      <div className="requests-grid" style={{display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(350px, 1fr))', gap:'20px'}}>
-        {requests.map(req => (
-          <div key={req.id} className="job-card-expanded" style={{padding:'20px', border:'1px solid #E2E8F0', borderRadius:'12px', background:'white'}}>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'15px'}}>
-                <h4 style={{fontSize:'1.1rem', color:'#2D3748', margin:0, maxWidth:'70%'}}>{req.title}</h4>
-                <div className="budget-tag" style={{background:'#E6FFFA', color:'#2C7A7B', padding:'5px 10px', borderRadius:'6px', fontWeight:'bold', fontSize:'0.85rem'}}>{req.description.match(/\[Budget: (.*?)\]/)?.[1] || "Open"}</div>
-            </div>
-            
-            <div style={{display:'flex', alignItems:'center', gap:'10px', marginBottom:'15px', paddingBottom:'15px', borderBottom:'1px solid #EDF2F7'}}>
-                <img src={req.profile_pic || "https://via.placeholder.com/40"} style={{width:'40px', height:'40px', borderRadius:'50%', cursor:'pointer'}} onClick={() => setViewProfileId(req.client_id)}/>
-                <div>
-                    <div style={{fontSize:'0.9rem', fontWeight:'600', cursor:'pointer'}} onClick={() => setViewProfileId(req.client_id)}>{req.client_name}</div>
-                    <small style={{color:'#718096'}}>Posted: {new Date(req.created_at).toLocaleDateString()}</small>
-                </div>
-            </div>
 
-            <p style={{fontSize:'0.9rem', color:'#4A5568', lineHeight:'1.5', marginBottom:'20px'}}>{req.description.replace(/\[.*?\]/g, '').substring(0, 150)}...</p>
-            <div style={{display:'flex', justifyContent:'space-between', alignItems:'center'}}>
-                <div style={{fontSize:'0.8rem', color:'#E53E3E', fontWeight:'600'}}>⏳ Due: {req.deadline ? new Date(req.deadline).toLocaleDateString() : 'ASAP'}</div>
-                <button className="create-btn-primary" style={{padding:'8px 20px', fontSize:'0.9rem', borderRadius:'8px'}} onClick={() => setBidModal(req)}>Send Proposal</button>
+      {(!requests || requests.length === 0) ? (
+        <div style={{ textAlign: 'center', padding: '40px', background: '#f9f9f9', borderRadius: '10px' }}>
+          <p style={{ color: '#718096' }}>No active jobs found.</p>
+          <p style={{ fontSize: '0.8rem' }}>Switch to "Client Mode" and post a requirement to test.</p>
+        </div>
+      ) : (
+        <div className="requests-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '20px' }}>
+          {requests.map(req => (
+            <div key={req.id} className="job-card-expanded" style={{ padding: '20px', border: '1px solid #E2E8F0', borderRadius: '12px', background: 'white', boxShadow: '0 4px 10px rgba(0,0,0,0.03)' }}>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+                <h4 style={{ fontSize: '1.1rem', color: '#2D3748', margin: 0, maxWidth: '70%' }}>{req.title}</h4>
+                <div className="budget-tag" style={{ background: '#E6FFFA', color: '#2C7A7B', padding: '5px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                  {req.description && req.description.match(/\[Budget: (.*?)\]/) ? req.description.match(/\[Budget: (.*?)\]/)[1] : "Open"}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '15px', paddingBottom: '15px', borderBottom: '1px solid #EDF2F7' }}>
+                <img
+                  src={req.profile_pic || "https://via.placeholder.com/40"}
+                  style={{ width: '40px', height: '40px', borderRadius: '50%', cursor: 'pointer' }}
+                  onClick={() => setViewProfileId(req.client_id)}
+                  alt="Client"
+                />
+                <div>
+                  <div style={{ fontSize: '0.9rem', fontWeight: '600', cursor: 'pointer' }} onClick={() => setViewProfileId(req.client_id)}>{req.client_name}</div>
+                  <small style={{ color: '#718096' }}>Posted: {new Date(req.created_at).toLocaleDateString()}</small>
+                </div>
+              </div>
+
+              <p style={{ fontSize: '0.9rem', color: '#4A5568', lineHeight: '1.5', marginBottom: '20px' }}>
+                {req.description ? req.description.replace(/\[.*?\]/g, '').substring(0, 150) : "No details."}...
+              </p>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ fontSize: '0.8rem', color: '#E53E3E', fontWeight: '600' }}>
+                  ⏳ Due: {req.deadline ? new Date(req.deadline).toLocaleDateString() : 'ASAP'}
+                </div>
+                {req.client_id === user.id ? (
+                  <button className="btn-small outline" disabled title="You posted this">Your Job</button>
+                ) : (
+                  <button className="create-btn-primary" style={{ padding: '8px 20px', fontSize: '0.9rem', borderRadius: '8px' }} onClick={() => setBidModalReq(req)}>
+                    Send Proposal
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 
-  const PortfolioSection = () => (<div className="animate-fade-in"><div className="header-row"><h3 className="section-title">Portfolio</h3><button className="btn-small outline" onClick={() => navigate('/upload-portfolio')}>Upload</button></div><div className="gigs-grid">{portfolio.map(item => (<div key={item.id} className="gig-card"><img src={item.description.split("|||")[0]} alt={item.title} className="gig-img"/><div className="gig-info"><h4>{item.title}</h4></div></div>))}</div></div>);
+  // --- QUIZ SECTION ---
+  const QuizSection = () => {
+    const [activeQuiz, setActiveQuiz] = useState(null);
+    const [currentQuestion, setCurrentQuestion] = useState(0);
+    const [score, setScore] = useState(0);
+    const [finished, setFinished] = useState(false);
+
+    const quizzes = [
+      { id: 1, title: 'React.js Basics', questions: [{ q: "What is a Hook?", o: ["Function", "Class", "Var", "Loop"], a: "Function" }, { q: "JSX stands for?", o: ["JS XML", "Java X", "JSON X", "None"], a: "JS XML" }] },
+      { id: 2, title: 'Python Mastery', questions: [{ q: "Is Python compiled?", o: ["Yes", "No", "Both", "None"], a: "No" }, { q: "Keyword for function?", o: ["func", "def", "fun", "function"], a: "def" }] },
+      { id: 3, title: 'UI/UX Principles', questions: [{ q: "What is Contrast?", o: ["Difference in color", "Size", "Shape", "None"], a: "Difference in color" }, { q: "Best tool for UI?", o: ["Figma", "Paint", "Word", "Excel"], a: "Figma" }] }
+    ];
+
+    const handleAnswer = (ans) => {
+      if (ans === activeQuiz.questions[currentQuestion].a) setScore(score + 10);
+      if (currentQuestion + 1 < activeQuiz.questions.length) setCurrentQuestion(currentQuestion + 1);
+      else {
+        setFinished(true);
+        // Submit Score
+        fetch('http://localhost:5000/api/quiz/submit', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ user_id: user.id, score: score + (ans === activeQuiz.questions[currentQuestion].a ? 10 : 0) })
+        });
+      }
+    };
+
+    return (
+      <div className="animate-fade-in">
+        <h3 className="section-title">Skill Assessments 🏆</h3>
+        {!activeQuiz ? (
+          <div className="gigs-grid">
+            {quizzes.map(q => (
+              <div key={q.id} className="gig-card" style={{ textAlign: 'center', padding: '30px' }}>
+                <h4>{q.title}</h4>
+                <p style={{ color: '#718096', marginBottom: '20px' }}>Verify your skills to earn a badge!</p>
+                <button className="create-btn-primary" onClick={() => { setActiveQuiz(q); setCurrentQuestion(0); setScore(0); setFinished(false); }}>Start Quiz</button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '30px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
+            {!finished ? (
+              <>
+                <h4>{activeQuiz.title} (Q{currentQuestion + 1}/{activeQuiz.questions.length})</h4>
+                <p style={{ fontSize: '1.1rem', margin: '20px 0' }}>{activeQuiz.questions[currentQuestion].q}</p>
+                <div style={{ display: 'grid', gap: '10px' }}>
+                  {activeQuiz.questions[currentQuestion].o.map(opt => (
+                    <button key={opt} className="btn-small outline" style={{ padding: '15px', textAlign: 'left' }} onClick={() => handleAnswer(opt)}>{opt}</button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div style={{ textAlign: 'center' }}>
+                <h3>🎉 Quiz Completed!</h3>
+                <p style={{ fontSize: '1.5rem', color: '#48BB78', fontWeight: 'bold', margin: '20px 0' }}>Score: {score}</p>
+                <p>Points added to your profile skill score.</p>
+                <button className="btn-small outline" onClick={() => setActiveQuiz(null)}>Back to Quizzes</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const PortfolioSection = () => (<div className="animate-fade-in"><div className="header-row"><h3 className="section-title">Portfolio</h3><button className="btn-small outline" onClick={() => navigate('/upload-portfolio')}>Upload</button></div><div className="gigs-grid">{portfolio.map(item => (<div key={item.id} className="gig-card"><img src={item.description.split("|||")[0]} alt={item.title} className="gig-img" /><div className="gig-info"><h4>{item.title}</h4></div></div>))}</div></div>);
 
   return (
     <div className="dashboard-content">
-      <div className="tabs-container">
-        <button className={`tab-btn ${activeTab==='overview'?'active':''}`} onClick={()=>setActiveTab('overview')}>Overview</button>
-        <button className={`tab-btn ${activeTab==='gigs'?'active':''}`} onClick={()=>setActiveTab('gigs')}>My Gigs</button>
-        <button className={`tab-btn ${activeTab==='work'?'active':''}`} onClick={()=>setActiveTab('work')}>Find Work</button>
-        <button className={`tab-btn ${activeTab==='portfolio'?'active':''}`} onClick={()=>setActiveTab('portfolio')}>Portfolio</button>
-      </div>
 
       <div className="tab-content">
-        {activeTab === 'overview' && <OverviewSection />}
+        {(activeTab === 'overview' || activeTab === 'dashboard') && <OverviewSection />}
         {activeTab === 'gigs' && <GigsSection />}
         {activeTab === 'work' && <FindWorkSection />}
         {activeTab === 'portfolio' && <PortfolioSection />}
+        {activeTab === 'quizzes' && <QuizSection />}
       </div>
 
       {/* MANAGE ORDER MODAL */}
       {manageOrder && (
-        <div className="modal-overlay">
-            <div className="order-modal">
-                <div className="order-header">
-                    <div><h3>Manage Order</h3><span>{manageOrder.job_title} (Client: {manageOrder.client_name})</span></div>
-                    <button onClick={()=>setManageOrder(null)} style={{background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>×</button>
-                </div>
-
-                <div className="order-summary-box">
-                    <div className="order-info-item"><small>Price</small><strong>₹{manageOrder.total_price}</strong></div>
-                    <div className="order-info-item"><small>Status</small><strong style={{textTransform:'capitalize'}}>{manageOrder.status.replace('_', ' ')}</strong></div>
-                </div>
-
-                <div className="progress-container">
-                    <div className={`progress-step completed`}><div className="step-circle">1</div><div className="step-label">Hired</div></div>
-                    <div className={`progress-step ${['in_progress','final_delivered','completed'].includes(manageOrder.status) ? 'active' : ''}`}><div className="step-circle">2</div><div className="step-label">Work</div></div>
-                    <div className={`progress-step ${['final_delivered','completed'].includes(manageOrder.status) ? 'completed' : ''}`}><div className="step-circle">3</div><div className="step-label">Deliver</div></div>
-                    <div className={`progress-step ${manageOrder.status==='completed' ? 'completed' : ''}`}><div className="step-circle">4</div><div className="step-label">Finish</div></div>
-                </div>
-
-                {manageOrder.status === 'revision_requested' && (
-                    <div className="revision-alert" style={{background:'#FFF5F5', border:'1px solid red', padding:10, borderRadius:8, color:'#C53030', marginBottom:20}}>
-                        <h4>⚠️ Revision Requested</h4>
-                        <p><b>Client Feedback:</b> "{revisionFeedback || 'Check chat for details'}"</p>
-                    </div>
-                )}
-
-                <form onSubmit={handleDeliverySubmit}>
-                    <div style={{fontWeight:'600', marginBottom:'10px', fontSize:'0.9rem'}}>DELIVER WORK</div>
-                    <div className="delivery-type">
-                        <div className={`type-btn ${deliveryType==='draft'?'selected':''}`} onClick={()=>setDeliveryType('draft')}>📝 Send Draft</div>
-                        <div className={`type-btn ${deliveryType==='final'?'selected':''}`} onClick={()=>setDeliveryType('final')}>✅ Final Delivery</div>
-                    </div>
-                    <div className="upload-zone">
-                        <label style={{cursor:'pointer', width:'100%', display:'block'}}>
-                            <span className="upload-icon">☁️</span>
-                            <span className="upload-text">{deliveryFile ? deliveryFile.name : "Click to Upload File"}</span>
-                            <input type="file" style={{display:'none'}} onChange={(e)=>setDeliveryFile(e.target.files[0])} />
-                        </label>
-                    </div>
-                    <textarea className="form-textarea" placeholder="Add a note..." onChange={(e)=>setDeliveryNote(e.target.value)}></textarea>
-                    <button className="submit-btn" style={{marginTop:'10px'}}>Send Delivery</button>
-                </form>
-            </div>
-        </div>
+        <ManageOrderModal
+          order={manageOrder}
+          user={user}
+          onClose={() => setManageOrder(null)}
+          onUpdate={() => {
+            setManageOrder(null);
+            refreshData();
+          }}
+        />
       )}
 
       {/* Client Profile Modal */}
       {viewProfileId && profileData && (
         <div className="modal-overlay" onClick={() => setViewProfileId(null)}>
-            <div className="modal-card" style={{width:'400px', textAlign:'center'}} onClick={e => e.stopPropagation()}>
-                <button onClick={() => setViewProfileId(null)} style={{position:'absolute', right:20, top:20, background:'none', border:'none', fontSize:'1.5rem', cursor:'pointer'}}>×</button>
-                <img src={profileData.profile_pic || "https://via.placeholder.com/100"} style={{width:'100px', height:'100px', borderRadius:'50%', objectFit:'cover', marginBottom:'15px', border:'3px solid #E2E8F0'}} />
-                <h3>{profileData.name}</h3><p style={{color:'#718096', marginBottom:'20px'}}>Client</p>
-                <div style={{textAlign:'left', background:'#F7FAFC', padding:'15px', borderRadius:'8px', marginBottom:'15px'}}><strong style={{display:'block', marginBottom:'5px', fontSize:'0.9rem'}}>About:</strong><p style={{fontSize:'0.85rem', color:'#4A5568'}}>{profileData.bio || "No bio available."}</p></div>
-                <button className="btn-small outline" style={{marginTop:'20px', width:'100%'}} onClick={() => setViewProfileId(null)}>Close</button>
-            </div>
+          <div className="modal-card" style={{ width: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <button onClick={() => setViewProfileId(null)} style={{ position: 'absolute', right: 20, top: 20, background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+            <img src={profileData.profile_pic || "https://via.placeholder.com/100"} style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px', border: '3px solid #E2E8F0' }} />
+            <h3>{profileData.name}</h3><p style={{ color: '#718096', marginBottom: '20px' }}>Client</p>
+            <div style={{ textAlign: 'left', background: '#F7FAFC', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}><strong style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>About:</strong><p style={{ fontSize: '0.85rem', color: '#4A5568' }}>{profileData.bio || "No bio available."}</p></div>
+            <button className="btn-small outline" style={{ marginTop: '20px', width: '100%' }} onClick={() => setViewProfileId(null)}>Close</button>
+          </div>
         </div>
       )}
 
       {/* Chat & Bid Modals */}
       {chatOrder && (
-    <ChatWindow 
-        order={chatOrder} 
-        currentUser={user} 
-        onClose={() => setChatOrder(null)} 
-    />
-)}
-      {bidModal && <div className="modal-overlay"><div className="modal-card"><h3>Bid on: {bidModal.title}</h3><form onSubmit={submitBid}><div style={{marginBottom:'10px'}}><label>Price</label><input type="number" className="form-input" onChange={e=>setBidData({...bidData, price:e.target.value})} required/></div><div style={{marginBottom:'10px'}}><label>Days</label><input type="number" className="form-input" onChange={e=>setBidData({...bidData, days:e.target.value})} required/></div><div style={{marginBottom:'10px'}}><label>Message</label><textarea className="form-textarea" onChange={e=>setBidData({...bidData, msg:e.target.value})} required></textarea></div><div style={{display:'flex', gap:'10px', marginTop:'15px'}}><button type="button" className="btn-small outline" onClick={()=>setBidModal(null)}>Cancel</button><button className="submit-btn" style={{margin:0}}>Submit</button></div></form></div></div>}
+        <ChatWindow
+          order={chatOrder}
+          currentUser={user}
+          onClose={() => setChatOrder(null)}
+        />
+      )}
+
+      {bidModalReq && (
+        <BidModal
+          requirement={bidModalReq}
+          user={user}
+          onClose={() => setBidModalReq(null)}
+          onSubmit={handleBidSubmit}
+        />
+      )}
     </div>
   );
 };
