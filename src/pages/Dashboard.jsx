@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import FreelancerDash from './FreelancerDash';
 import ClientDash from './ClientDash';
 import AdminDash from './AdminDash';
+import ChatWindow from '../components/ChatWindow'; // Import ChatWindow
 import './Dashboard.css';
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const location = useLocation(); // Get navigation state
   const [user, setUser] = useState(null);
   const [viewMode, setViewMode] = useState(null);
+
+  // State for Chat
+  const [activeChatOrder, setActiveChatOrder] = useState(null);
 
   // Notification State
   const [notifications, setNotifications] = useState([]);
@@ -24,23 +29,43 @@ const Dashboard = () => {
     } else {
       const parsedUser = JSON.parse(storedData);
       setUser(parsedUser);
-      if (!viewMode) setViewMode(parsedUser.role || 'client');
+      if (!viewMode) {
+        const savedMode = localStorage.getItem('dashboardViewMode');
+        setViewMode(savedMode || parsedUser.role || 'client');
+      }
 
       // Fetch Notifications
       fetch(`http://localhost:5000/api/notifications/${parsedUser.id}`)
         .then(res => res.json())
         .then(data => setNotifications(data));
+
+      // 🔴 CHECK FOR CHAT INTENT
+      if (location.state?.section === 'messages' && location.state?.orderId) {
+        setCurrentSection('messages');
+        fetch(`http://localhost:5000/api/orders/single/${location.state.orderId}`)
+          .then(res => res.json())
+          .then(orderData => setActiveChatOrder(orderData))
+          .catch(err => console.error("Failed to load chat order", err));
+
+        // Clear state so it doesn't reopen on refresh
+        window.history.replaceState({}, document.title);
+      } else if (location.state?.section) {
+        setCurrentSection(location.state.section);
+      }
     }
-  }, [navigate, viewMode]);
+  }, [navigate, location]);
 
   const handleLogout = () => {
     localStorage.removeItem('campusUser');
+    localStorage.removeItem('dashboardViewMode'); // Clear preference on logout
     navigate('/login');
   };
 
   const toggleViewMode = () => {
-    setViewMode(prevMode => prevMode === 'freelancer' ? 'client' : 'freelancer');
-    setCurrentSection('dashboard'); // Reset view on switch
+    const newMode = viewMode === 'freelancer' ? 'client' : 'freelancer';
+    setViewMode(newMode);
+    localStorage.setItem('dashboardViewMode', newMode); // Persist change
+    setCurrentSection('dashboard');
   };
 
   // Notification Filter
@@ -175,10 +200,12 @@ const Dashboard = () => {
         {currentSection === 'dashboard' && viewMode === 'client' && <ClientDash user={user} section="explore" />}
 
         {/* Messages & Settings Placeholders (Future Features) */}
+        {/* Messages & Settings */}
         {currentSection === 'messages' && (
           <div style={{ textAlign: 'center', padding: '50px', background: 'white', borderRadius: '12px' }}>
             <h3>💌 Messages Center</h3>
-            <p>Select an active order to start chatting.</p>
+            <p>Select an active order in "My Orders" to start chatting.</p>
+            {activeChatOrder && <p style={{ color: 'green' }}>Opening chat...</p>}
           </div>
         )}
 
@@ -211,6 +238,15 @@ const Dashboard = () => {
         {viewMode === 'admin' && <AdminDash user={user} section={currentSection === 'dashboard' ? 'analytics' : currentSection} />}
 
       </main>
+
+      {/* GLOBAL CHAT OVERLAY */}
+      {activeChatOrder && (
+        <ChatWindow
+          order={activeChatOrder}
+          currentUser={user}
+          onClose={() => setActiveChatOrder(null)}
+        />
+      )}
     </div>
   );
 };

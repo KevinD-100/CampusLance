@@ -5,8 +5,8 @@ import './Forms.css';
 const UploadPortfolio = () => {
   const navigate = useNavigate();
   const user = JSON.parse(localStorage.getItem('campusUser'));
-  const [formData, setFormData] = useState({ title: '', category: 'Web Design', description: '' });
-  const [image, setImage] = useState(null);
+  const [formData, setFormData] = useState({ title: '', category: 'Web Design', description: '', tools: '', link: '' });
+  const [images, setImages] = useState([]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -15,38 +15,69 @@ const UploadPortfolio = () => {
     data.append('title', formData.title);
     data.append('category', formData.category);
     data.append('description', formData.description);
-    if (image) data.append('image', image);
+    data.append('tools', formData.tools);
+    data.append('link', formData.link);
 
-    await fetch('http://localhost:5000/api/portfolio', { method: 'POST', body: data });
-    alert("Added to Portfolio!");
-    navigate('/dashboard');
+    // Append multiple files
+    for (let i = 0; i < images.length; i++) {
+      data.append('images', images[i]);
+    }
+
+    try {
+      const res = await fetch('http://localhost:5000/api/portfolio', { method: 'POST', body: data });
+      const result = await res.json();
+
+      if (!res.ok) {
+        throw new Error(result.error || result.message || "Upload Failed");
+      }
+
+      alert("Added to Portfolio!");
+      navigate('/dashboard');
+    } catch (err) {
+      console.error("Upload Error:", err);
+      alert(`Error: ${err.message}`);
+    }
   };
 
   return (
     <div className="form-page-container">
       <div className="form-card">
         <button onClick={() => navigate('/dashboard')} className="back-btn">← Back</button>
-        <div className="form-header"><h2>Add to Portfolio</h2><p>Showcase your best work.</p></div>
+        <div className="form-header"><h2>Add to Portfolio</h2><p>Showcase your best work with details.</p></div>
         <form onSubmit={handleSubmit}>
           <div className="form-section">
             <label className="form-label">Project Title</label>
-            <input type="text" className="form-input" onChange={(e) => setFormData({...formData, title: e.target.value})} required />
+            <input type="text" className="form-input" onChange={(e) => setFormData({ ...formData, title: e.target.value })} required placeholder="e.g. E-Commerce App" />
           </div>
-          <div className="form-section">
-            <label className="form-label">Category</label>
-            <select className="form-select" onChange={(e) => setFormData({...formData, category: e.target.value})}>
-              <option>Web Design</option><option>Mobile App</option><option>Logo/Branding</option><option>Writing</option>
-            </select>
+
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <div className="form-section" style={{ flex: 1 }}>
+              <label className="form-label">Category</label>
+              <select className="form-select" onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
+                <option>Web Design</option><option>Mobile App</option><option>Logo/Branding</option><option>Writing</option><option>Video Editing</option><option>Other</option>
+              </select>
+            </div>
+            <div className="form-section" style={{ flex: 1 }}>
+              <label className="form-label">Tools Used</label>
+              <input type="text" className="form-input" onChange={(e) => setFormData({ ...formData, tools: e.target.value })} placeholder="e.g. React, Figma, Python" required />
+            </div>
           </div>
+
           <div className="form-section">
-            <label className="form-label">Project Image</label>
-            <input type="file" className="form-input" onChange={(e) => setImage(e.target.files[0])} required />
+            <label className="form-label">Project Link (Optional)</label>
+            <input type="url" className="form-input" onChange={(e) => setFormData({ ...formData, link: e.target.value })} placeholder="https://..." />
+          </div>
+
+          <div className="form-section">
+            <label className="form-label">Project Images (Select Multiple)</label>
+            <input type="file" className="form-input" multiple onChange={(e) => setImages(e.target.files)} required />
+            {images.length > 0 && <small style={{ color: '#48BB78' }}>{images.length} files selected</small>}
           </div>
           <div className="form-section">
             <label className="form-label">Description</label>
-            <textarea className="form-textarea" onChange={(e) => setFormData({...formData, description: e.target.value})}></textarea>
+            <textarea className="form-textarea" style={{ height: '120px' }} onChange={(e) => setFormData({ ...formData, description: e.target.value })} placeholder="Describe what you built, your role, and the outcome..."></textarea>
           </div>
-          <button className="submit-btn">Upload</button>
+          <button className="submit-btn">Upload Project</button>
         </form>
       </div>
     </div>

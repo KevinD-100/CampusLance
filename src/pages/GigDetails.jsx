@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './Dashboard.css';
+import ImageLightbox from '../components/ImageLightbox';
 
 const GigDetails = () => {
     const { id } = useParams();
@@ -9,18 +10,33 @@ const GigDetails = () => {
     const [gig, setGig] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isFav, setIsFav] = useState(false);
+    const [portfolio, setPortfolio] = useState([]);
+    const [lightbox, setLightbox] = useState({ open: false, images: [], idx: 0 });
 
     useEffect(() => {
+        // Fetch Gig
         fetch(`http://localhost:5000/api/gigs/single/${id}`)
             .then(res => res.json())
-            .then(data => { setGig(data); setLoading(false); })
+            .then(data => {
+                setGig(data);
+                setLoading(false);
+
+                // Fetch Portfolio when gig loads
+                if (data.freelancer_id) {
+                    fetch(`http://localhost:5000/api/portfolio/${data.freelancer_id}`)
+                        .then(r => r.json())
+                        .then(p => setPortfolio(Array.isArray(p) ? p : []))
+                        .catch(e => console.error(e));
+                }
+            })
             .catch(err => { console.error(err); setLoading(false); });
 
         if (user) {
             fetch(`http://localhost:5000/api/favorites/${user.id}`)
                 .then(res => res.json())
                 .then(ids => setGig(prev => {
-                    if (ids.includes(prev?.freelancer_id)) setIsFav(true);
+                    // Safe check if prev exists
+                    if (prev && ids.includes(prev.freelancer_id)) setIsFav(true);
                     return prev;
                 }));
         }
@@ -67,7 +83,7 @@ const GigDetails = () => {
             });
             const data = await res.json();
             if (data.orderId) {
-                navigate('/dashboard', { state: { section: 'messages' } }); // Ideally open chat automatically
+                navigate('/dashboard', { state: { section: 'messages', orderId: data.orderId } });
             }
         } catch (err) { console.error(err); alert("Could not start chat."); }
     };
@@ -159,6 +175,68 @@ const GigDetails = () => {
                             <button className="btn-small outline" style={{ marginTop: '15px' }} onClick={() => navigate(`/profile/${gig.freelancer_id}`)}>View Full Profile</button>
                         </div>
                     </div>
+
+                    {/* PORTFOLIO SECTION */}
+                    {portfolio.length > 0 && (
+                        <div style={{ marginTop: '30px' }}>
+                            <h3 style={{ fontSize: '1.5rem', marginBottom: '20px', color: '#2D3748' }}>My Portfolio</h3>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '20px' }}>
+                                {portfolio.map(item => {
+                                    let images = [];
+                                    try {
+                                        if (item.image_url && typeof item.image_url === 'string' && item.image_url.startsWith('[')) {
+                                            images = JSON.parse(item.image_url);
+                                        } else if (item.image_url) {
+                                            images = [item.image_url];
+                                        } else {
+                                            images = [item.description.split("|||")[0]];
+                                        }
+                                    } catch (e) { images = ["https://via.placeholder.com/400x300?text=Error"]; }
+
+                                    if (!Array.isArray(images)) images = [images];
+                                    images = images.filter(i => i && i !== "null");
+                                    if (images.length === 0) images = ["https://via.placeholder.com/400x300?text=No+Image"];
+
+                                    return (
+                                        <div key={item.id} style={{ background: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', border: '1px solid #E2E8F0', cursor: 'pointer' }} onClick={() => setLightbox({ open: true, images: images, idx: 0 })}>
+                                            <div className="hover-zoom-container" style={{ height: '140px', background: '#000', position: 'relative' }}>
+                                                <img
+                                                    src={images[0]}
+                                                    className="hover-zoom-img"
+                                                    onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/400x300?text=Broken+Image"; }}
+                                                />
+                                                {images.length > 1 && <span style={{ position: 'absolute', bottom: 5, right: 5, background: 'rgba(0,0,0,0.7)', color: 'white', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '10px', fontWeight: '600' }}>+ {images.length - 1} More</span>}
+                                            </div>
+                                            <div style={{ padding: '12px' }}>
+                                                <h5 style={{ margin: '0 0 5px 0', fontSize: '0.95rem', color: '#2D3748' }}>{item.title}</h5>
+                                                <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                                                    {item.tools && item.tools.split(',').slice(0, 2).map((t, i) => (
+                                                        <span key={i} style={{ fontSize: '0.65rem', background: '#F7FAFC', border: '1px solid #EDF2F7', padding: '2px 4px', borderRadius: '4px', color: '#718096' }}>{t}</span>
+                                                    ))}
+                                                </div>
+                                                {item.link && (
+                                                    <p
+                                                        style={{ margin: '8px 0 0', fontSize: '0.75rem', color: '#3182CE', zIndex: 10, position: 'relative' }}
+                                                        onClick={(e) => { e.stopPropagation(); window.open(item.link, '_blank'); }}
+                                                    >
+                                                        🔗 Visit Project
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {/* LIGHTBOX */}
+                            {lightbox.open && (
+                                <ImageLightbox
+                                    images={lightbox.images}
+                                    initialIndex={lightbox.idx}
+                                    onClose={() => setLightbox({ ...lightbox, open: false })}
+                                />
+                            )}
+                        </div>
+                    )}
                 </div>
 
                 {/* RIGHT STICKY CARD */}

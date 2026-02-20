@@ -4,6 +4,7 @@ import './Dashboard.css';
 import ChatWindow from '../components/ChatWindow';
 import ClientReviewModal from '../components/ClientReviewModal';
 import ClientRatingModal from '../components/ClientRatingModal';
+import ImageLightbox from '../components/ImageLightbox';
 
 // 🔴 ADDED 'section' PROP
 const ClientDash = ({ user, section }) => {
@@ -35,6 +36,10 @@ const ClientDash = ({ user, section }) => {
   // Profile Modal State
   const [viewProfileId, setViewProfileId] = useState(null);
   const [profileData, setProfileData] = useState(null);
+  const [profilePortfolio, setProfilePortfolio] = useState([]);
+
+  // Lightbox
+  const [lightbox, setLightbox] = useState({ open: false, images: [], idx: 0 });
 
   // 1. DATA FETCHING
   const refreshData = () => {
@@ -55,8 +60,6 @@ const ClientDash = ({ user, section }) => {
   };
 
   useEffect(() => { refreshData(); }, [user]); // Initial load (filters empty)
-  // Re-fetch when filters apply? Or manual button? Manual is better for performance, but "Live" is cooler. 
-  // Let's do manual "Apply Filter" button for explicit control.
 
   // 🔴 UPDATE TAB WHEN PROP CHANGES
   useEffect(() => {
@@ -66,9 +69,19 @@ const ClientDash = ({ user, section }) => {
   // Fetch Profile for Modal
   useEffect(() => {
     if (viewProfileId) {
+      // Fetch Profile Info
       fetch(`http://localhost:5000/api/profile/${viewProfileId}`)
         .then(res => res.json())
         .then(data => setProfileData(data));
+
+      // Fetch Portfolio
+      fetch(`http://localhost:5000/api/portfolio/${viewProfileId}`)
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) setProfilePortfolio(data);
+          else setProfilePortfolio([]);
+        })
+        .catch(err => setProfilePortfolio([]));
     }
   }, [viewProfileId]);
 
@@ -295,23 +308,89 @@ const ClientDash = ({ user, section }) => {
         {(section === 'explore' || section === 'dashboard') && (
           <div className="animate-fade-in">
             {/* FILTER BAR */}
-            <div className="filter-bar" style={{ display: 'flex', gap: '10px', background: 'white', padding: '15px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', flexWrap: 'wrap' }}>
-              <input
-                type="text" placeholder="Search services..."
-                className="form-input" style={{ flex: 2 }}
-                value={filters.search} onChange={e => setFilters({ ...filters, search: e.target.value })}
-              />
-              <select className="form-select" style={{ flex: 1 }} value={filters.category} onChange={e => setFilters({ ...filters, category: e.target.value })}>
-                <option value="All">All Categories</option>
-                <option value="Development">Development</option>
-                <option value="Design">Design</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Writing">Writing</option>
-                <option value="Others">Others</option>
-              </select>
-              <input type="number" placeholder="Min ₹" className="form-input" style={{ width: '80px' }} value={filters.min} onChange={e => setFilters({ ...filters, min: e.target.value })} />
-              <input type="number" placeholder="Max ₹" className="form-input" style={{ width: '80px' }} value={filters.max} onChange={e => setFilters({ ...filters, max: e.target.value })} />
-              <button onClick={refreshData} className="create-btn-primary" style={{ margin: 0 }}>Apply</button>
+            {/* FILTER BAR - REDESIGNED */}
+            <div className="filter-bar" style={{ display: 'flex', gap: '15px', background: 'white', padding: '15px 20px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', alignItems: 'center', position: 'relative' }}>
+
+              {/* SEARCH & PREVIEW */}
+              <div style={{ flex: 1.5, position: 'relative' }}>
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <span style={{ position: 'absolute', left: '15px', color: '#A0AEC0' }}></span>
+                  <input
+                    type="text" placeholder="Search for services..."
+                    className="form-input" style={{ width: '100%', paddingLeft: '40px', margin: 0, borderRadius: '50px', border: '1px solid #E2E8F0', height: '50px', fontSize: '0.95rem' }}
+                    value={filters.search}
+                    onChange={e => setFilters({ ...filters, search: e.target.value })}
+                    onFocus={() => { if (filters.search) setFilters({ ...filters, showPreview: true }) }}
+                    onBlur={() => setTimeout(() => setFilters(f => ({ ...f, showPreview: false })), 200)} // Delay for click
+                  />
+                </div>
+
+                {/* SEARCH PREVIEW DROPDOWN */}
+                {filters.search && (
+                  <div style={{ position: 'absolute', top: '55px', left: 0, width: '100%', background: 'white', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden', border: '1px solid #F7FAFC' }}>
+                    {gigs.filter(g => g.title.toLowerCase().includes(filters.search.toLowerCase())).slice(0, 5).map(g => (
+                      <div
+                        key={g.id}
+                        onClick={() => navigate(`/gig/${g.id}`)}
+                        style={{ padding: '12px 15px', borderBottom: '1px solid #F7FAFC', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '10px', transition: 'background 0.1s' }}
+                        onMouseEnter={(e) => e.target.style.background = '#F7FAFC'}
+                        onMouseLeave={(e) => e.target.style.background = 'white'}
+                      >
+                        <img src={g.image_url || "https://via.placeholder.com/30"} style={{ width: '30px', height: '30px', borderRadius: '4px', objectFit: 'cover' }} />
+                        <span style={{ fontSize: '0.9rem', color: '#2D3748' }}>{g.title}</span>
+                      </div>
+                    ))}
+                    {gigs.filter(g => g.title.toLowerCase().includes(filters.search.toLowerCase())).length === 0 && (
+                      <div style={{ padding: '15px', color: '#718096', fontSize: '0.9rem', fontStyle: 'italic' }}>No results found</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* CATEGORY (Same Size) */}
+              <div style={{ flex: 1.5 }}>
+                <select
+                  className="form-select"
+                  style={{ width: '100%', padding: '0 20px', margin: 0, borderRadius: '50px', border: '1px solid #E2E8F0', height: '50px', appearance: 'none', background: 'white url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23CBD5E0%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E") no-repeat right 20px center', backgroundSize: '12px' }}
+                  value={filters.category}
+                  onChange={e => setFilters({ ...filters, category: e.target.value })}
+                >
+                  <option value="All">All Categories</option>
+                  <option value="Development">💻 Development</option>
+                  <option value="Design">🎨 Design</option>
+                  <option value="Marketing">📈 Marketing</option>
+                  <option value="Writing">✍️ Writing</option>
+                  <option value="Others">🔮 Others</option>
+                </select>
+              </div>
+
+              {/* PRICE ADJUSTING BOX (Popover) */}
+              <div style={{ flex: 0.5, position: 'relative' }}>
+                <button
+                  onClick={() => setFilters(f => ({ ...f, showPrice: !f.showPrice }))}
+                  style={{ width: '100%', height: '50px', borderRadius: '50px', border: '1px solid #E2E8F0', background: 'white', cursor: 'pointer', fontWeight: '600', color: '#4A5568', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                >
+                  Price ▾
+                </button>
+
+                {filters.showPrice && (
+                  <div style={{ position: 'absolute', top: '60px', right: 0, width: '250px', background: 'white', padding: '20px', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', border: '1px solid #F7FAFC', zIndex: 50 }}>
+                    <h5 style={{ margin: '0 0 15px 0', fontSize: '0.9rem', color: '#2D3748' }}>Budget Range</h5>
+                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
+                      <input type="number" placeholder="Min" className="form-input" style={{ margin: 0, borderRadius: '8px' }} value={filters.min} onChange={e => setFilters({ ...filters, min: e.target.value })} />
+                      <span style={{ color: '#A0AEC0' }}>-</span>
+                      <input type="number" placeholder="Max" className="form-input" style={{ margin: 0, borderRadius: '8px' }} value={filters.max} onChange={e => setFilters({ ...filters, max: e.target.value })} />
+                    </div>
+                    <button onClick={() => setFilters(f => ({ ...f, showPrice: false }))} style={{ width: '100%', padding: '8px', background: '#3182CE', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', cursor: 'pointer' }}>Set Budget</button>
+                  </div>
+                )}
+              </div>
+
+              {/* APPLY ICON BUTTON */}
+              <button onClick={refreshData} style={{ width: '50px', height: '50px', borderRadius: '50%', background: '#2D3748', border: 'none', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 4px 12px rgba(45, 55, 72, 0.3)' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+              </button>
+
             </div>
 
             <div className="gigs-grid" style={{ marginTop: '20px' }}>
@@ -336,12 +415,84 @@ const ClientDash = ({ user, section }) => {
       {/* MODALS */}
       {viewProfileId && profileData && (
         <div className="modal-overlay" onClick={() => setViewProfileId(null)}>
-          <div className="modal-card" style={{ width: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-card" style={{ width: '600px', maxHeight: '90vh', overflowY: 'auto', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <button onClick={() => setViewProfileId(null)} style={{ position: 'absolute', right: 20, top: 20, background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
             <img src={profileData.profile_pic || "https://via.placeholder.com/100"} style={{ width: '100px', height: '100px', borderRadius: '50%', objectFit: 'cover', marginBottom: '15px', border: '3px solid #E2E8F0' }} />
             <h3>{profileData.name}</h3><p style={{ color: '#718096', marginBottom: '20px' }}>Freelancer</p>
-            <div style={{ textAlign: 'left', background: '#F7FAFC', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}><strong style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>About:</strong><p style={{ fontSize: '0.85rem', color: '#4A5568' }}>{profileData.bio || "No bio available."}</p><div style={{ marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}><strong style={{ fontSize: '0.8rem', color: '#2D3748' }}>📧 Contact:</strong> <span style={{ fontSize: '0.8rem' }}>{profileData.email}</span></div></div>
-            <button className="btn-small outline" style={{ width: '100%' }} onClick={() => setViewProfileId(null)}>Close</button>
+
+            <div style={{ textAlign: 'left', background: '#F7FAFC', padding: '15px', borderRadius: '8px', marginBottom: '15px' }}>
+              <strong style={{ display: 'block', marginBottom: '5px', fontSize: '0.9rem' }}>About:</strong>
+              <p style={{ fontSize: '0.85rem', color: '#4A5568' }}>{profileData.bio || "No bio available."}</p>
+              <div style={{ marginTop: '15px', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                <strong style={{ fontSize: '0.8rem', color: '#2D3748' }}>📧 Contact:</strong> <span style={{ fontSize: '0.8rem' }}>{profileData.email}</span>
+              </div>
+            </div>
+
+            {/* PORTFOLIO SECTION IN PUBLIC PROFILE */}
+            <div style={{ textAlign: 'left', marginTop: '20px' }}>
+              <h4 style={{ fontSize: '1rem', marginBottom: '15px', borderBottom: '1px solid #eee', paddingBottom: '5px' }}>Portfolio Projects</h4>
+              {profilePortfolio.length === 0 ? <p style={{ fontSize: '0.85rem', color: '#A0AEC0' }}>No projects to show.</p> : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '15px' }}>
+                  {profilePortfolio.map(item => {
+                    let images = [];
+                    try {
+                      if (item.image_url && typeof item.image_url === 'string' && item.image_url.startsWith('[')) {
+                        images = JSON.parse(item.image_url);
+                      } else if (item.image_url) {
+                        images = [item.image_url];
+                      } else {
+                        images = [item.description.split("|||")[0]];
+                      }
+                    } catch (e) { images = ["https://via.placeholder.com/400x300?text=Error"]; }
+
+                    if (!Array.isArray(images)) images = [images];
+                    images = images.filter(i => i && i !== "null");
+                    if (images.length === 0) images = ["https://via.placeholder.com/400x300?text=No+Image"];
+
+                    return (
+                      <div key={item.id} style={{ background: 'white', border: '1px solid #E2E8F0', borderRadius: '8px', overflow: 'hidden', cursor: 'pointer' }} onClick={() => setLightbox({ open: true, images: images, idx: 0 })}>
+                        <div className="hover-zoom-container" style={{ height: '120px', background: '#000', position: 'relative' }}>
+                          <img
+                            src={images[0]}
+                            className="hover-zoom-img"
+                            onError={(e) => e.target.src = "https://via.placeholder.com/400x300?text=Broken"}
+                          />
+                          {images.length > 1 && <span style={{ position: 'absolute', bottom: 5, right: 5, background: 'rgba(0,0,0,0.7)', color: 'white', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '10px', fontWeight: 'bold' }}>+ {images.length - 1}</span>}
+                        </div>
+                        <div style={{ padding: '10px' }}>
+                          <h5 style={{ margin: '0 0 5px 0', fontSize: '0.9rem' }}>{item.title}</h5>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '3px' }}>
+                            {item.tools && item.tools.split(',').slice(0, 3).map((t, i) => (
+                              <span key={i} style={{ fontSize: '0.65rem', background: '#EDF2F7', padding: '2px 4px', borderRadius: '4px' }}>{t}</span>
+                            ))}
+                          </div>
+                          {item.link && (
+                            <a
+                              href={item.link} target="_blank" rel="noopener noreferrer"
+                              style={{ display: 'block', marginTop: '8px', fontSize: '0.75rem', color: '#3182CE', textDecoration: 'none' }}
+                              onClick={e => e.stopPropagation()}
+                            >
+                              🔗 Visit Project
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <button className="btn-small outline" style={{ width: '100%', marginTop: '20px' }} onClick={() => setViewProfileId(null)}>Close</button>
+
+            {/* LIGHTBOX INSIDE MODAL */}
+            {lightbox.open && (
+              <ImageLightbox
+                images={lightbox.images}
+                initialIndex={lightbox.idx}
+                onClose={() => setLightbox({ ...lightbox, open: false })}
+              />
+            )}
           </div>
         </div>
       )}

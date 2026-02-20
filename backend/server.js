@@ -22,7 +22,56 @@ const db = mysql.createConnection({
 
 db.connect((err) => {
     if (err) console.error('❌ DB Error:', err);
-    else console.log('✅ Connected to MySQL Database');
+    else {
+        console.log('✅ Connected to MySQL Database');
+
+        // AUTO-CLEANUP: Remove duplicate inquiries on startup
+        const cleanupSql = `
+            DELETE o1 FROM orders o1
+            JOIN orders o2 
+            ON o1.client_id = o2.client_id 
+            AND o1.freelancer_id = o2.freelancer_id 
+            AND o1.status = 'inquiry' 
+            AND o2.status = 'inquiry'
+            WHERE o1.id < o2.id;
+        `;
+        db.query(cleanupSql, (e, r) => {
+            if (!e && r.affectedRows > 0) console.log(`🧹 Creating Gig: Cleaned up ${r.affectedRows} duplicate inquiries.`);
+        });
+
+        // 3. SETUP PORTFOLIO TABLE (Ensure exists)
+        const portfolioTable = `
+            CREATE TABLE IF NOT EXISTS portfolio_items (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                freelancer_id INT,
+                title VARCHAR(255),
+                category VARCHAR(100),
+                description TEXT,
+                image_url TEXT,
+                tools VARCHAR(255),
+                link VARCHAR(255),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (freelancer_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        `;
+        db.query(portfolioTable, (err) => {
+            if (err) console.error("❌ Portfolio Table Error:", err);
+            else {
+                console.log("✅ Portfolio Table Ready");
+                // 4. MIGRATION: Fix missing columns for existing tables
+                const alterItems = [
+                    "ALTER TABLE portfolio_items ADD COLUMN image_url TEXT;",
+                    "ALTER TABLE portfolio_items ADD COLUMN tools VARCHAR(255);",
+                    "ALTER TABLE portfolio_items ADD COLUMN link VARCHAR(255);"
+                ];
+                alterItems.forEach(sql => {
+                    db.query(sql, (e) => {
+                        if (e && e.code !== 'ER_DUP_FIELDNAME') console.log("⚠️ Migration Note:", e.message);
+                    });
+                });
+            }
+        });
+    }
 });
 
 // FILE UPLOAD CONFIG
@@ -317,14 +366,16 @@ app.post('/api/orders', (req, res) => {
 });
 
 // 2. START CHAT (create inquiry)
+// 2. START CHAT (create inquiry)
 app.post('/api/chat/start', (req, res) => {
     const { client_id, freelancer_id, gig_id, gig_title } = req.body;
 
-    // Check if chat already exists
+    // Check if chat already exists (Open or Inquiry)
     const checkSql = `
         SELECT o.id FROM orders o 
-        JOIN requirements r ON o.requirement_id = r.id
-        WHERE o.client_id = ? AND o.freelancer_id = ? AND (o.status = 'inquiry' OR o.status = 'in_progress')
+        WHERE o.client_id = ? AND o.freelancer_id = ? 
+        AND (o.status = 'inquiry' OR o.status = 'in_progress')
+        ORDER BY o.created_at DESC
         LIMIT 1
     `;
 
@@ -336,12 +387,30 @@ app.post('/api/chat/start', (req, res) => {
             if (err) return res.status(500).json(err);
             const reqId = resReq.insertId;
 
+            // Use ON DUPLICATE constraint logic? No, just rely on the Check above.
             db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, total_price, status) VALUES (?, ?, ?, 0, 'inquiry')",
                 [reqId, client_id, freelancer_id], (err, resOrd) => {
                     if (err) return res.status(500).json(err);
                     res.json({ orderId: resOrd.insertId });
                 });
         });
+    });
+});
+
+// GET SINGLE ORDER (Missing Route Fixed)
+app.get('/api/orders/single/:id', (req, res) => {
+    const sql = `
+        SELECT o.*, r.title as job_title, u.name as freelancer_name, c.name as client_name 
+        FROM orders o
+        JOIN requirements r ON o.requirement_id = r.id
+        JOIN users u ON o.freelancer_id = u.id
+        JOIN users c ON o.client_id = c.id
+        WHERE o.id = ?
+    `;
+    db.query(sql, [req.params.id], (err, result) => {
+        if (err) return res.status(500).json(err);
+        if (result.length === 0) return res.status(404).json({ error: "Order not found" });
+        res.json(result[0]);
     });
 });
 
@@ -451,16 +520,56 @@ app.put('/api/profile/:id', upload.single('profilePic'), (req, res) => {
     });
 });
 
-app.post('/api/portfolio', upload.single('image'), (req, res) => {
-    const { freelancer_id, title, category, description } = req.body;
-    const image_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
-    const descWithImg = image_url + "|||" + description;
-    db.query("INSERT INTO portfolio_items (freelancer_id, title, category, description) VALUES (?, ?, ?, ?)",
-        [freelancer_id, title, category, descWithImg], (err) => res.json({ message: "Added" }));
+app.post('/api/portfolio', upload.array('images'), (req, res) => {
+    console.log("📥 Portfolio Upload Request:", req.body);
+    console.log("📂 Files:", req.files);
+
+    const { freelancer_id, title, category, description, tools, link } = req.body;
+
+    // Validate required fields
+    if (!freelancer_id) return res.status(400).json({ error: "Missing Freelancer ID" });
+
+    // Handle Multiple Files
+    let image_urls = [];
+    if (req.files && req.files.length > 0) {
+        image_urls = req.files.map(f => `http://localhost:5000/uploads/${f.filename}`);
+    } else if (req.body.image_url) {
+        // Manual string fallback
+    }
+
+    // Store as JSON string e.g. '["url1", "url2"]'
+    const image_url_json = JSON.stringify(image_urls);
+
+    const sql = "INSERT INTO portfolio_items (freelancer_id, title, category, description, image_url, tools, link) VALUES (?, ?, ?, ?, ?, ?, ?)";
+
+    db.query(sql, [freelancer_id, title, category, description, image_url_json, tools, link],
+        (err) => {
+            if (err) {
+                console.error("❌ DB Insert Error:", err);
+                return res.status(500).json({ error: err.sqlMessage || err.message });
+            }
+            console.log("✅ Portfolio Item Saved to DB");
+            res.json({ message: "Added" });
+        });
 });
 
 app.get('/api/portfolio/:id', (req, res) => {
-    db.query("SELECT * FROM portfolio_items WHERE freelancer_id = ?", [req.params.id], (err, results) => res.json(results));
+    console.log(`📥 Fetching Portfolio for Freelancer: ${req.params.id}`);
+    db.query("SELECT * FROM portfolio_items WHERE freelancer_id = ? ORDER BY id DESC", [req.params.id], (err, results) => {
+        if (err) {
+            console.error("❌ DB Query Error:", err);
+            return res.status(500).json(err);
+        }
+        console.log(`✅ Found ${results.length} items for Freelancer ${req.params.id}`);
+        res.json(results);
+    });
+});
+
+app.delete('/api/portfolio/:id', (req, res) => {
+    db.query("DELETE FROM portfolio_items WHERE id = ?", [req.params.id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Deleted" });
+    });
 });
 
 // --- ADMIN ---

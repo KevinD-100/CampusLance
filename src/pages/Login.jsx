@@ -9,20 +9,20 @@ const authImage = "https://images.unsplash.com/photo-1523240795612-9a054b0db644?
 
 const Login = () => {
   const navigate = useNavigate();
-  
+
   // Form State
   const [formData, setFormData] = useState({ email: '', password: '' });
-  
+
   // Errors State
   const [errors, setErrors] = useState({ email: '', password: '' });
-  
+
   // Server Message State
   const [serverMsg, setServerMsg] = useState({ type: '', text: '' });
 
   // 🔴 VALIDATION LOGIC
   const validateField = (name, value) => {
     let errorMsg = '';
-    
+
     if (name === 'email') {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!value) {
@@ -31,7 +31,7 @@ const Login = () => {
         errorMsg = "Please enter a valid email address.";
       }
     }
-    
+
     if (name === 'password') {
       if (!value) errorMsg = "Password is required.";
     }
@@ -41,7 +41,7 @@ const Login = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
+
     // 1. Update Data
     setFormData({ ...formData, [name]: value });
 
@@ -55,7 +55,7 @@ const Login = () => {
 
   const handleManualLogin = async (e) => {
     e.preventDefault();
-    
+
     // Check before submit
     const emailErr = validateField('email', formData.email);
     const passErr = validateField('password', formData.password);
@@ -66,24 +66,24 @@ const Login = () => {
     }
 
     try {
-        const res = await fetch('http://localhost:5000/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData),
-        });
+      const res = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData),
+      });
 
-        const data = await res.json();
+      const data = await res.json();
 
-        if (res.ok) {
-            setServerMsg({ type: 'success', text: "✅ Login Successful! Redirecting..." });
-            localStorage.setItem('campusUser', JSON.stringify(data.user));
-            // Slight delay so user sees the success message
-            setTimeout(() => navigate('/dashboard'), 1000);
-        } else {
-            setServerMsg({ type: 'error', text: data.error || "Login Failed" });
-        }
+      if (res.ok) {
+        setServerMsg({ type: 'success', text: "✅ Login Successful! Redirecting..." });
+        localStorage.setItem('campusUser', JSON.stringify(data.user));
+        // Slight delay so user sees the success message
+        setTimeout(() => navigate('/dashboard'), 1000);
+      } else {
+        setServerMsg({ type: 'error', text: data.error || "Login Failed" });
+      }
     } catch (error) {
-        setServerMsg({ type: 'error', text: "Server connection failed. Is Backend running?" });
+      setServerMsg({ type: 'error', text: "Server connection failed. Is Backend running?" });
     }
   };
 
@@ -104,7 +104,7 @@ const Login = () => {
         setServerMsg({ type: 'error', text: data.error || "Google Login Failed" });
       }
     } catch (error) {
-       setServerMsg({ type: 'error', text: "Network Error: Backend not reachable." });
+      setServerMsg({ type: 'error', text: "Network Error: Backend not reachable." });
     }
   };
 
@@ -114,7 +114,7 @@ const Login = () => {
   return (
     <div className="auth-wrapper">
       <div className="auth-card">
-        
+
         {/* LEFT: Image */}
         <div className="auth-visual">
           <img src={authImage} alt="CampusLance" className="auth-img" />
@@ -133,11 +133,11 @@ const Login = () => {
           )}
 
           <form style={{ width: '100%' }} onSubmit={handleManualLogin}>
-            
+
             <div className="form-group">
               <label>Email Address</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 name="email"
                 className={`custom-input ${errors.email ? 'invalid' : ''}`}
                 placeholder="name@example.com"
@@ -146,11 +146,11 @@ const Login = () => {
               {/* Inline Error */}
               {errors.email && <span className="field-error-text">{errors.email}</span>}
             </div>
-            
+
             <div className="form-group">
               <label>Password</label>
-              <input 
-                type="password" 
+              <input
+                type="password"
                 name="password"
                 className={`custom-input ${errors.password ? 'invalid' : ''}`}
                 placeholder="••••••••"
@@ -159,8 +159,8 @@ const Login = () => {
               {errors.password && <span className="field-error-text">{errors.password}</span>}
             </div>
 
-            <div style={{textAlign: 'right', marginBottom: '15px'}}>
-              <Link to="/forgot-password" style={{color: '#2D3748', fontSize: '0.85rem', fontWeight: '600', textDecoration: 'none'}}>
+            <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+              <Link to="/forgot-password" style={{ color: '#2D3748', fontSize: '0.85rem', fontWeight: '600', textDecoration: 'none' }}>
                 Forgot Password?
               </Link>
             </div>
@@ -171,19 +171,19 @@ const Login = () => {
           <div className="divider"><span>OR</span></div>
 
           <div className="social-login">
-            <GoogleLogin 
-              onSuccess={handleGoogleSuccess} 
-              onError={() => setServerMsg({type:'error', text:'Google Login Failed'})} 
-              theme="outline" 
-              size="large" 
-              width="250" 
-              text="signin_with" 
-              shape="pill" 
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setServerMsg({ type: 'error', text: 'Google Login Failed' })}
+              theme="outline"
+              size="large"
+              width="250"
+              text="signin_with"
+              shape="pill"
             />
           </div>
 
           <p className="auth-footer-text">
-            Don't have an account? <Link to="/">Sign up</Link>
+            Don't have an account? <Link to="/register">Sign up</Link>
           </p>
         </div>
       </div>

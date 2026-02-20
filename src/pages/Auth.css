@@ -1,11 +1,23 @@
 @keyframes slideInRight {
-  from { opacity: 0; transform: translateX(30px); }
-  to { opacity: 1; transform: translateX(0); }
+  from {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
 }
 
 @keyframes zoomSlow {
-  from { transform: scale(1); }
-  to { transform: scale(1.1); }
+  from {
+    transform: scale(1);
+  }
+
+  to {
+    transform: scale(1.1);
+  }
 }
 
 /* Center the card on the screen */
@@ -16,7 +28,7 @@
   min-height: 100vh;
   padding: 20px;
   background: linear-gradient(135deg, rgba(44, 62, 80, 0.8), rgba(72, 187, 120, 0.4)),
-              url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2000&auto=format&fit=crop');
+    url('https://images.unsplash.com/photo-1519389950473-47ba0277781c?q=80&w=2000&auto=format&fit=crop');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -26,8 +38,10 @@
 .auth-card {
   display: flex;
   width: 100%;
-  max-width: 950px; /* Reduced from 1200px */
-  height: 600px;    /* Reduced from 700px */
+  max-width: 950px;
+  /* Reduced from 1200px */
+  height: 600px;
+  /* Reduced from 700px */
   background: var(--card-white);
   border-radius: 25px;
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.1);
@@ -36,7 +50,7 @@
 
 /* LEFT SIDE: IMAGE (Fits perfectly now) */
 .auth-visual {
-  flex: 1.5; 
+  flex: 1.5;
   background-color: #E6FFFA;
   position: relative;
   overflow: hidden;
@@ -45,14 +59,15 @@
 .auth-img {
   width: 100%;
   height: 100%;
-  object-fit: cover; 
+  object-fit: cover;
   animation: zoomSlow 20s infinite alternate;
 }
 
 /* RIGHT SIDE: FORM */
 .auth-form-container {
   flex: 1;
-  padding: 2.5rem; /* Reduced padding */
+  padding: 2.5rem;
+  /* Reduced padding */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -100,7 +115,8 @@
   font-size: 0.9rem;
   outline: none;
   transition: all 0.2s;
-  box-sizing: border-box; /* Fixes width issues */
+  box-sizing: border-box;
+  /* Fixes width issues */
   transition: border-color 0.3s ease, background-color 0.3s ease;
 }
 
@@ -132,11 +148,14 @@
   align-items: center;
   justify-content: center;
 }
-.divider::before, .divider::after {
+
+.divider::before,
+.divider::after {
   content: "";
   flex: 1;
   border-bottom: 1px solid #E2E8F0;
 }
+
 .divider span {
   padding: 0 10px;
   color: var(--text-muted);
@@ -147,9 +166,11 @@
 .social-login {
   width: 100%;
   display: flex;
-  justify-content: center; /* Centers the button */
+  justify-content: center;
+  /* Centers the button */
   align-items: center;
-  min-height: 40px; /* Ensures height so it doesn't collapse */
+  min-height: 40px;
+  /* Ensures height so it doesn't collapse */
 }
 
 /* Footer */
@@ -158,6 +179,7 @@
   font-size: 0.8rem;
   color: var(--text-muted);
 }
+
 .auth-footer-text a {
   color: var(--text-main);
   font-weight: 600;
@@ -166,9 +188,20 @@
 
 /* Mobile */
 @media (max-width: 768px) {
-  .auth-card { flex-direction: column; height: auto; max-width: 400px; }
-  .auth-visual { height: 150px; flex: none; }
-  .auth-form-container { padding: 1.5rem; }
+  .auth-card {
+    flex-direction: column;
+    height: auto;
+    max-width: 400px;
+  }
+
+  .auth-visual {
+    height: 150px;
+    flex: none;
+  }
+
+  .auth-form-container {
+    padding: 1.5rem;
+  }
 }
 
 .message-box {
@@ -202,7 +235,8 @@
 .field-error-text {
   color: #E53E3E;
   font-size: 0.75rem;
-  margin-top: 5px; /* Pull it closer to input */
+  margin-top: 5px;
+  /* Pull it closer to input */
   margin-bottom: 10px;
   text-align: left;
   display: block;

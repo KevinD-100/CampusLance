@@ -4,6 +4,8 @@ import './Dashboard.css';
 import ChatWindow from '../components/ChatWindow';
 import BidModal from '../components/BidModal';
 import ManageOrderModal from '../components/ManageOrderModal';
+import ImageLightbox from '../components/ImageLightbox';
+import SkillAssessment from '../components/SkillAssessment';
 
 const FreelancerDash = ({ user, section }) => {
   const navigate = useNavigate();
@@ -19,6 +21,9 @@ const FreelancerDash = ({ user, section }) => {
   // UI State
   const [bidModalReq, setBidModalReq] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Lightbox State
+  const [lightbox, setLightbox] = useState({ open: false, images: [], idx: 0 });
 
   // Manage Order
   const [manageOrder, setManageOrder] = useState(null);
@@ -359,81 +364,153 @@ const FreelancerDash = ({ user, section }) => {
   );
 
   // --- QUIZ SECTION ---
-  const QuizSection = () => {
-    const [activeQuiz, setActiveQuiz] = useState(null);
-    const [currentQuestion, setCurrentQuestion] = useState(0);
-    const [score, setScore] = useState(0);
-    const [finished, setFinished] = useState(false);
+  const QuizSection = () => (
+    <SkillAssessment user={user} onComplete={refreshData} />
+  );
 
-    const quizzes = [
-      { id: 1, title: 'React.js Basics', questions: [{ q: "What is a Hook?", o: ["Function", "Class", "Var", "Loop"], a: "Function" }, { q: "JSX stands for?", o: ["JS XML", "Java X", "JSON X", "None"], a: "JS XML" }] },
-      { id: 2, title: 'Python Mastery', questions: [{ q: "Is Python compiled?", o: ["Yes", "No", "Both", "None"], a: "No" }, { q: "Keyword for function?", o: ["func", "def", "fun", "function"], a: "def" }] },
-      { id: 3, title: 'UI/UX Principles', questions: [{ q: "What is Contrast?", o: ["Difference in color", "Size", "Shape", "None"], a: "Difference in color" }, { q: "Best tool for UI?", o: ["Figma", "Paint", "Word", "Excel"], a: "Figma" }] }
-    ];
 
-    const handleAnswer = (ans) => {
-      if (ans === activeQuiz.questions[currentQuestion].a) setScore(score + 10);
-      if (currentQuestion + 1 < activeQuiz.questions.length) setCurrentQuestion(currentQuestion + 1);
-      else {
-        setFinished(true);
-        // Submit Score
-        fetch('http://localhost:5000/api/quiz/submit', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ user_id: user.id, score: score + (ans === activeQuiz.questions[currentQuestion].a ? 10 : 0) })
-        });
-      }
-    };
 
-    return (
-      <div className="animate-fade-in">
-        <h3 className="section-title">Skill Assessments 🏆</h3>
-        {!activeQuiz ? (
-          <div className="gigs-grid">
-            {quizzes.map(q => (
-              <div key={q.id} className="gig-card" style={{ textAlign: 'center', padding: '30px' }}>
-                <h4>{q.title}</h4>
-                <p style={{ color: '#718096', marginBottom: '20px' }}>Verify your skills to earn a badge!</p>
-                <button className="create-btn-primary" onClick={() => { setActiveQuiz(q); setCurrentQuestion(0); setScore(0); setFinished(false); }}>Start Quiz</button>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div style={{ maxWidth: '600px', margin: '0 auto', padding: '30px', background: 'white', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }}>
-            {!finished ? (
-              <>
-                <h4>{activeQuiz.title} (Q{currentQuestion + 1}/{activeQuiz.questions.length})</h4>
-                <p style={{ fontSize: '1.1rem', margin: '20px 0' }}>{activeQuiz.questions[currentQuestion].q}</p>
-                <div style={{ display: 'grid', gap: '10px' }}>
-                  {activeQuiz.questions[currentQuestion].o.map(opt => (
-                    <button key={opt} className="btn-small outline" style={{ padding: '15px', textAlign: 'left' }} onClick={() => handleAnswer(opt)}>{opt}</button>
-                  ))}
-                </div>
-              </>
-            ) : (
-              <div style={{ textAlign: 'center' }}>
-                <h3>🎉 Quiz Completed!</h3>
-                <p style={{ fontSize: '1.5rem', color: '#48BB78', fontWeight: 'bold', margin: '20px 0' }}>Score: {score}</p>
-                <p>Points added to your profile skill score.</p>
-                <button className="btn-small outline" onClick={() => setActiveQuiz(null)}>Back to Quizzes</button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    );
+  const handleDeletePortfolio = async (id) => {
+    if (!confirm("Delete this project?")) return;
+    await fetch(`http://localhost:5000/api/portfolio/${id}`, { method: 'DELETE' });
+    refreshData();
   };
 
-  const PortfolioSection = () => (<div className="animate-fade-in"><div className="header-row"><h3 className="section-title">Portfolio</h3><button className="btn-small outline" onClick={() => navigate('/upload-portfolio')}>Upload</button></div><div className="gigs-grid">{portfolio.map(item => (<div key={item.id} className="gig-card"><img src={item.description.split("|||")[0]} alt={item.title} className="gig-img" /><div className="gig-info"><h4>{item.title}</h4></div></div>))}</div></div>);
+  const PortfolioSection = () => (
+    <div className="animate-fade-in">
+      <div className="header-row"><h3 className="section-title">Portfolio</h3><button className="btn-small outline" onClick={() => navigate('/upload-portfolio')}>+ Add Project</button></div>
+
+
+
+      {portfolio.length === 0 ? <p style={{ textAlign: 'center', color: '#718096', padding: '40px' }}>No projects yet. Add your best work!</p> : (
+        <div className="animate-fade-in">
+          {/* 📊 UNIQUE ANALYTICS BAR */}
+          <div className="portfolio-stats-bar">
+            <div className="stat-box">
+              <span className="stat-value">{portfolio.length}</span>
+              <span className="stat-label">Projects</span>
+            </div>
+            <div className="stat-box">
+              <span className="stat-value">
+                {[...portfolio].sort((a, b) => portfolio.filter(v => v.category === a.category).length - portfolio.filter(v => v.category === b.category).length).pop()?.category || "General"}
+              </span>
+              <span className="stat-label">Top Skill</span>
+            </div>
+            <div className="stat-box">
+              <span className="stat-value">
+                {new Set(portfolio.flatMap(p => p.tools ? p.tools.split(',') : [])).size}
+              </span>
+              <span className="stat-label">Tools Used</span>
+            </div>
+          </div>
+
+          <div className="gigs-grid">
+            {portfolio.map(item => {
+              // Handle legacy data (image hidden in description) vs new data
+              let images = [];
+              try {
+                if (item.image_url && typeof item.image_url === 'string' && item.image_url.startsWith('[')) {
+                  images = JSON.parse(item.image_url);
+                } else if (item.image_url) {
+                  images = [item.image_url];
+                } else {
+                  images = [item.description.split("|||")[0]];
+                }
+              } catch (e) { images = ["https://via.placeholder.com/400x300?text=Error"]; }
+
+              // Safety check & Filter
+              if (!Array.isArray(images)) images = [images];
+              images = images.filter(i => i && i !== "null" && i.length > 5);
+              if (images.length === 0) images = ["https://via.placeholder.com/400x300?text=No+Image"];
+
+              const displayDesc = item.description.includes("|||") ? item.description.split("|||")[1] : item.description;
+
+              return (
+                <div key={item.id} className="gig-card tilt-card" style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div
+                    className="hover-zoom-container"
+                    style={{ position: 'relative', height: '200px', background: '#000', cursor: 'pointer' }}
+                    onClick={() => setLightbox({ open: true, images: images, idx: 0 })}
+                  >
+                    {/* COVER IMAGE (Zoomable) */}
+                    <img
+                      src={images[0]}
+                      className="hover-zoom-img"
+                      onError={(e) => { e.target.onerror = null; e.target.src = "https://via.placeholder.com/400x300?text=Broken+Image"; }}
+                    />
+
+                    {/* BADGE for Multi-Image */}
+                    {images.length > 1 && (
+                      <div style={{ position: 'absolute', bottom: '10px', right: '10px', background: 'rgba(0,0,0,0.7)', color: 'white', padding: '4px 10px', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '600' }}>
+                        + {images.length - 1} More
+                      </div>
+                    )}
+
+                    {/* DELETE BUTTON (Stop Propagation) */}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeletePortfolio(item.id); }}
+                      style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(255,255,255,0.9)', border: 'none', borderRadius: '50%', width: '30px', height: '30px', cursor: 'pointer', color: 'red', zIndex: 10 }}
+                      title="Delete Project"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+
+                  <div className="gig-info" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '5px' }}>
+                      <h4 style={{ margin: 0 }}>{item.title}</h4>
+                      <span style={{ fontSize: '0.7rem', background: '#EBF8FF', color: '#2B6CB0', padding: '2px 6px', borderRadius: '4px' }}>{item.category}</span>
+                    </div>
+
+                    {item.tools && (
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap', marginBottom: '10px' }}>
+                        {item.tools.split(',').map((t, i) => (
+                          <span key={i} style={{ fontSize: '0.7rem', background: '#F0FFF4', color: '#276749', padding: '2px 6px', borderRadius: '4px', border: '1px solid #C6F6D5' }}>{t.trim()}</span>
+                        ))}
+                      </div>
+                    )}
+
+                    <p style={{ fontSize: '0.85rem', color: '#4A5568', margin: '0 0 15px 0', flex: 1 }}>{displayDesc?.substring(0, 100)}...</p>
+
+                    {item.link && (
+                      <a
+                        href={item.link} target="_blank" rel="noopener noreferrer"
+                        className="btn-small outline"
+                        style={{ textAlign: 'center', display: 'block', marginTop: 'auto' }}
+                        onClick={e => e.stopPropagation()}
+                      >
+                        🔗 Visit Project
+                      </a>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* RENDER LIGHTBOX */}
+            {lightbox.open && (
+              <ImageLightbox
+                images={lightbox.images}
+                initialIndex={lightbox.idx}
+                onClose={() => setLightbox({ ...lightbox, open: false })}
+              />
+            )}
+          </div>
+        </div>
+      )
+      }
+    </div >
+  );
 
   return (
     <div className="dashboard-content">
 
       <div className="tab-content">
-        {(activeTab === 'overview' || activeTab === 'dashboard') && <OverviewSection />}
-        {activeTab === 'gigs' && <GigsSection />}
-        {activeTab === 'work' && <FindWorkSection />}
-        {activeTab === 'portfolio' && <PortfolioSection />}
-        {activeTab === 'quizzes' && <QuizSection />}
+        {(activeTab === 'overview' || activeTab === 'dashboard') && OverviewSection()}
+        {activeTab === 'gigs' && GigsSection()}
+        {activeTab === 'work' && FindWorkSection()}
+        {activeTab === 'portfolio' && PortfolioSection()}
+        {activeTab === 'quizzes' && QuizSection()}
       </div>
 
       {/* MANAGE ORDER MODAL */}

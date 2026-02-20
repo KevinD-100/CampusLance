@@ -10,6 +10,7 @@ import ResetPassword from './pages/ResetPassword';
 import EditGig from './pages/EditGig';
 import UploadPortfolio from './pages/UploadPortfolio';
 import Profile from './pages/Profile';
+import PublicProfile from './pages/PublicProfile';
 import GigDetails from './pages/GigDetails';
 
 function App() {
@@ -26,6 +27,7 @@ function App() {
       <Route path="/edit-gig/:id" element={<EditGig />} />
       <Route path="/upload-portfolio" element={<UploadPortfolio />} />
       <Route path="/profile" element={<Profile />} />
+      <Route path="/profile/:id" element={<PublicProfile />} />
       <Route path="/gig/:id" element={<GigDetails />} />
     </Routes>
   );
