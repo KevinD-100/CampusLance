@@ -89,7 +89,7 @@ const upload = multer({ storage: storage });
 // EMAIL CONFIG
 const transporter = nodemailer.createTransport({
     service: 'gmail',
-    auth: { user: 'kevindaniel2028@mca.ajce.in', pass: 'xjgw pyeq akkh gpxf' }
+    auth: { user: 'danielaliyas110@gmail.com', pass: 'ttvk fzur hjcy bxtk' }
 });
 
 // HELPER: NOTIFICATIONS
