@@ -4,11 +4,19 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const multer = require('multer');
 const path = require('path');
+const Razorpay = require('razorpay');
+const crypto = require('crypto');
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
+// 🟢 FIX: Allow Razorpay Popups to communicate
+app.use((req, res, next) => {
+    res.setHeader("Cross-Origin-Opener-Policy", "unsafe-none");
+    res.setHeader("Cross-Origin-Embedder-Policy", "unsafe-none");
+    next();
+});
 // Serve uploaded images so frontend can access them
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
@@ -91,6 +99,14 @@ const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: 'danielaliyas110@gmail.com', pass: 'ttvk fzur hjcy bxtk' }
 });
+
+// RAZORPAY CONFIG (TEST MODE)
+const razorpay = new Razorpay({
+    key_id: 'rzp_test_SKKavRDsA7hwvi',
+    key_secret: 'JonxTwA09KWsOVkMB5kFkeo8'
+});
+
+console.log("💳 Payment System: Razorpay Active (Test Mode)");
 
 // HELPER: NOTIFICATIONS
 const notify = (userId, type, message) => {
@@ -347,54 +363,54 @@ app.post('/api/orders', (req, res) => {
         [client_id, job_title, deadline], (err, resReq) => {
             if (err) return res.status(500).json(err);
             const reqId = resReq.insertId;
-
-            // 2. Create Placeholder Bid
-            db.query("INSERT INTO bids (requirement_id, freelancer_id, price, delivery_days, message) VALUES (?, ?, ?, 3, 'Direct Order')",
-                [reqId, freelancer_id, total_price], (err, resBid) => {
-                    if (err) return res.status(500).json(err);
-                    const bidId = resBid.insertId;
-
-                    // 3. Create Order
-                    db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status) VALUES (?, ?, ?, ?, ?, 'in_progress')",
-                        [reqId, client_id, freelancer_id, bidId, total_price], (err) => {
-                            if (err) return res.status(500).json(err);
-                            notify(freelancer_id, 'order', `New Order: ${job_title}`);
-                            res.json({ message: "Order Placed" });
-                        });
-                });
+            res.json({ message: "Requirement created", reqId });
         });
 });
 
-// 2. START CHAT (create inquiry)
-// 2. START CHAT (create inquiry)
-app.post('/api/chat/start', (req, res) => {
-    const { client_id, freelancer_id, gig_id, gig_title } = req.body;
+// --- RAZORPAY PAYMENT INTEGRATION ---
+app.post('/api/payment/create-order', async (req, res) => {
+    const { amount } = req.body;
+    console.log(`💳 Creating Razorpay Order for ₹${amount}...`);
+    const options = {
+        amount: Math.round(amount * 100), // Amount in paise
+        currency: "INR",
+        receipt: `receipt_${Date.now()}`
+    };
+    try {
+        const order = await razorpay.orders.create(options);
+        console.log(`✅ Razorpay Order Created: ${order.id}`);
+        res.json(order);
+    } catch (error) {
+        console.error("❌ Razorpay Order Error:", error);
+        res.status(500).json(error);
+    }
+});
 
-    // Check if chat already exists (Open or Inquiry)
-    const checkSql = `
-        SELECT o.id FROM orders o 
-        WHERE o.client_id = ? AND o.freelancer_id = ? 
-        AND (o.status = 'inquiry' OR o.status = 'in_progress')
-        ORDER BY o.created_at DESC
-        LIMIT 1
-    `;
+app.post('/api/payment/verify', (req, res) => {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+    const hmac = crypto.createHmac('sha256', razorpay.key_secret);
+    hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
+    const generated_signature = hmac.digest('hex');
 
-    db.query(checkSql, [client_id, freelancer_id], (err, data) => {
-        if (data && data.length > 0) return res.json({ orderId: data[0].id });
+    if (generated_signature === razorpay_signature) {
+        res.json({ status: 'success' });
+    } else {
+        res.status(400).json({ status: 'failure' });
+    }
+});
 
-        // Create new inquiry
-        db.query("INSERT INTO requirements (client_id, title, description) VALUES (?, ?, 'Inquiry')", [client_id, `Inquiry: ${gig_title}`], (err, resReq) => {
+app.post('/api/orders/hire', (req, res) => {
+    const { requirement_id, client_id, freelancer_id, bid_id, price } = req.body;
+
+    // Create actual order
+    db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status) VALUES (?, ?, ?, ?, ?, 'in_progress')",
+        [requirement_id, client_id, freelancer_id, bid_id, price], (err, result) => {
             if (err) return res.status(500).json(err);
-            const reqId = resReq.insertId;
 
-            // Use ON DUPLICATE constraint logic? No, just rely on the Check above.
-            db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, total_price, status) VALUES (?, ?, ?, 0, 'inquiry')",
-                [reqId, client_id, freelancer_id], (err, resOrd) => {
-                    if (err) return res.status(500).json(err);
-                    res.json({ orderId: resOrd.insertId });
-                });
+            // Mark bid as 'selected' if logic exists, otherwise just notify
+            notify(freelancer_id, 'order', `You've been hired! New order created.`);
+            res.json({ message: "Order Placed Successfully", orderId: result.insertId });
         });
-    });
 });
 
 // GET SINGLE ORDER (Missing Route Fixed)

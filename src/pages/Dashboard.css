@@ -1044,6 +1044,51 @@
   }
 }
 
+/* Hire Modal Specifics */
+.hire-modal {
+  width: 450px !important;
+  border: 1px solid #E2E8F0;
+}
+
+.hire-summary {
+  background: #F7FAFC;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin: 1.5rem 0;
+  border: 1px solid #EDF2F7;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #4A5568;
+}
+
+.price-tag {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #2D3748;
+}
+
+.summary-note {
+  font-size: 0.8rem;
+  color: #718096;
+  margin-top: 10px;
+  line-height: 1.4;
+  padding-top: 10px;
+  border-top: 1px dashed #CBD5E0;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 20px;
+}
+
 /* =============================
     8. ZOOM & LIGHTBOX
    ============================= */

@@ -41,6 +41,52 @@ const ClientDash = ({ user, section }) => {
   // Lightbox
   const [lightbox, setLightbox] = useState({ open: false, images: [], idx: 0 });
 
+  const [hireDetails, setHireDetails] = useState(null);
+
+  const handleHire = (job, bid) => {
+    setHireDetails({ job, bid });
+  };
+
+  const confirmHire = () => {
+    const { job, bid } = hireDetails;
+    fetch('http://localhost:5000/api/orders/hire', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requirement_id: job.id, client_id: user.id, freelancer_id: bid.freelancer_id, bid_id: bid.id, price: bid.price })
+    })
+      .then(res => res.json())
+      .then(d => {
+        alert(d.message);
+        setHireDetails(null);
+        refreshData();
+        setActiveTab('orders');
+      });
+  };
+
+  const HireConfirmationModal = () => {
+    if (!hireDetails) return null;
+    const { job, bid } = hireDetails;
+    return (
+      <div className="modal-overlay">
+        <div className="modal-card hire-modal">
+          <h2>Confirm Agreement</h2>
+          <p>You are about to hire <strong>{bid.freelancer_name}</strong> for the project: <strong>{job.title}</strong>.</p>
+          <div className="hire-summary">
+            <div className="summary-row">
+              <span>Total Price:</span>
+              <span className="price-tag">₹{bid.price}</span>
+            </div>
+            <p className="summary-note">Payment will be processed only after you accept the final delivery.</p>
+          </div>
+          <div className="modal-actions">
+            <button className="btn-secondary" onClick={() => setHireDetails(null)}>Cancel</button>
+            <button className="btn-primary" onClick={confirmHire}>Confirm & Hire</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // 1. DATA FETCHING
   const refreshData = () => {
     if (user?.id) {
@@ -120,13 +166,98 @@ const ClientDash = ({ user, section }) => {
 
   const submitReview = async (status) => {
     if (status === 'revision_requested' && !revisionNote.trim()) return alert("Enter feedback.");
-    if (status === 'completed' && !window.confirm("Accept work?")) return;
-    await fetch('http://localhost:5000/api/orders/review', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order_id: reviewOrder.id, client_id: user.id, status, feedback: revisionNote })
-    });
-    alert(status === 'completed' ? "Order Completed!" : "Revision Requested.");
-    setReviewOrder(null); refreshData();
+
+    if (status === 'completed') {
+      if (!window.Razorpay) {
+        console.error("❌ Razorpay SDK NOT LOADED. Check global script tag in index.html.");
+        return alert("Razorpay SDK is missing! Please refresh the page. If it persists, check your internet connection.");
+      }
+      if (!window.confirm(`Accept work and Pay ₹${reviewOrder.total_price}?`)) return;
+
+      try {
+        console.log("💳 Starting Payment Flow for Price:", reviewOrder.total_price);
+        // 1. Create Razorpay Order
+        const resOrder = await fetch('http://localhost:5000/api/payment/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: reviewOrder.total_price })
+        });
+        const orderData = await resOrder.json();
+        console.log("📦 Received Order Data:", orderData);
+
+        if (!orderData || !orderData.id) {
+          console.error("❌ Order Creation Failed:", orderData);
+          return alert("Payment initialization failed. Razorpay could not create an order.");
+        }
+
+        // 2. Open Razorpay Modal
+        if (!window.Razorpay) {
+          console.error("❌ window.Razorpay NOT FOUND. Script might be blocked.");
+          return alert("Razorpay SDK not loaded. Check your internet connection or browser security settings.");
+        }
+
+        const options = {
+          key: 'rzp_test_SKKavRDsA7hwvi', // Real Test Key ID
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "CampusLance",
+          description: `Payment for Order #${reviewOrder.id}`,
+          order_id: orderData.id,
+          modal: {
+            ondismiss: function () { console.log("💸 Checkout Modal Closed by User"); }
+          },
+          handler: async (response) => {
+            console.log("✅ Payment Success Response Received:", response);
+            // 3. Verify Payment
+            const resVerify = await fetch('http://localhost:5000/api/payment/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(response)
+            });
+            const verifyData = await resVerify.json();
+
+            if (verifyData.status === 'success') {
+              console.log("🎊 Payment Verified on Backend.");
+              // 4. Finalize Review on Backend
+              await fetch('http://localhost:5000/api/orders/review', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: reviewOrder.id, client_id: user.id, status, feedback: revisionNote })
+              });
+              alert("✅ Payment Successful! Order #" + reviewOrder.id + " is now Completed.");
+              setReviewOrder(null);
+              refreshData();
+            } else {
+              console.error("❌ Payment verification failed:", verifyData);
+              alert("❌ Payment verification failed.");
+            }
+          },
+          prefill: {
+            name: user.name,
+            email: user.email
+          },
+          theme: { color: "#3182CE" }
+        };
+
+        console.log("🚀 Launching Razorpay Checkout...");
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+
+      } catch (err) {
+        console.error("🔥 Payment Process Crash:", err);
+        alert("Payment process failed. Ensure backend and frontend are properly synced.");
+      }
+    } else {
+      // Logic for Revision Requested (No Payment Needed)
+      await fetch('http://localhost:5000/api/orders/review', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ order_id: reviewOrder.id, client_id: user.id, status, feedback: revisionNote })
+      });
+      alert("Revision Requested.");
+      setReviewOrder(null);
+      refreshData();
+    }
   };
 
   // Helper
@@ -150,18 +281,6 @@ const ClientDash = ({ user, section }) => {
     const [bidsMap, setBidsMap] = useState({});
     const hiredJobIds = orders.map(o => o.requirement_id);
     const fetchBids = (jobId) => fetch(`http://localhost:5000/api/bids/job/${jobId}`).then(res => res.json()).then(data => setBidsMap(p => ({ ...p, [jobId]: data })));
-
-    const handleHire = (job, bid) => {
-      if (confirm(`Hire ${bid.freelancer_name}?`)) {
-        fetch('http://localhost:5000/api/orders/hire', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ requirement_id: job.id, client_id: user.id, freelancer_id: bid.freelancer_id, bid_id: bid.id, price: bid.price })
-        })
-          .then(res => res.json())
-          .then(d => { alert(d.message); refreshData(); setActiveTab('orders'); });
-      }
-    };
 
     useEffect(() => { myJobs.forEach(j => fetchBids(j.id)); }, [myJobs]);
 
@@ -520,6 +639,8 @@ const ClientDash = ({ user, section }) => {
           }}
         />
       )}
+
+      {hireDetails && <HireConfirmationModal />}
 
       {chatOrder && (
         <ChatWindow

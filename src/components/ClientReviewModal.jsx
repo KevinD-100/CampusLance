@@ -23,15 +23,80 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
 
     const handleSubmit = async (status) => {
         if (status === 'revision_requested' && !revisionNote.trim()) return alert("Please enter feedback for the revision.");
-        if (status === 'completed' && !window.confirm("Are you sure you want to accept this work and complete the order?")) return;
 
-        await fetch('http://localhost:5000/api/orders/review', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ order_id: order.id, client_id: user.id, status, feedback: revisionNote })
-        });
+        if (status === 'completed') {
+            if (!window.Razorpay) {
+                return alert("Razorpay SDK not loaded. Please refresh the page.");
+            }
+            if (!window.confirm(`Accept work and Pay ₹${order.total_price}?`)) return;
 
-        alert(status === 'completed' ? "🎉 Order Completed!" : "⚠️ Revision Requested.");
-        onUpdate();
+            try {
+                // 1. Create Razorpay Order
+                const resOrder = await fetch('http://localhost:5000/api/payment/create-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: order.total_price })
+                });
+                const orderData = await resOrder.json();
+
+                if (!orderData || !orderData.id) {
+                    return alert("Failed to initialize payment. Try again.");
+                }
+
+                // 2. Open Razorpay Modal
+                const options = {
+                    key: 'rzp_test_SKKavRDsA7hwvi',
+                    amount: orderData.amount,
+                    currency: orderData.currency,
+                    name: "CampusLance",
+                    description: `Payment for Order #${order.id}`,
+                    order_id: orderData.id,
+                    handler: async (response) => {
+                        // 3. Verify Payment
+                        const resVerify = await fetch('http://localhost:5000/api/payment/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(response)
+                        });
+                        const verifyData = await resVerify.json();
+
+                        if (verifyData.status === 'success') {
+                            // 4. Finalize Review on Backend
+                            await fetch('http://localhost:5000/api/orders/review', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ order_id: order.id, client_id: user.id, status, feedback: revisionNote })
+                            });
+                            alert("🎉 Payment Successful! Order Completed.");
+                            onUpdate();
+                        } else {
+                            alert("❌ Payment verification failed.");
+                        }
+                    },
+                    prefill: {
+                        name: user.name,
+                        email: user.email
+                    },
+                    theme: { color: "#3182CE" }
+                };
+
+                const rzp = new window.Razorpay(options);
+                rzp.open();
+
+            } catch (err) {
+                console.error("Payment Error:", err);
+                alert("Payment process failed.");
+            }
+        } else {
+            // Logic for Revision Requested (No Payment)
+            await fetch('http://localhost:5000/api/orders/review', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: order.id, client_id: user.id, status, feedback: revisionNote })
+            });
+            alert("⚠️ Revision Requested.");
+            onUpdate();
+        }
     };
 
     return (
