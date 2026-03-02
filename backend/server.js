@@ -66,11 +66,44 @@ db.connect((err) => {
             if (err) console.error("❌ Portfolio Table Error:", err);
             else {
                 console.log("✅ Portfolio Table Ready");
-                // 4. MIGRATION: Fix missing columns for existing tables
+
+                // 4. SETUP CATEGORIES TABLE
+                const categoriesTable = `
+                    CREATE TABLE IF NOT EXISTS categories (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        name VARCHAR(100) UNIQUE NOT NULL
+                    )
+                `;
+                db.query(categoriesTable, (err) => {
+                    if (err) console.error("❌ Categories Table Error:", err);
+                    else {
+                        db.query("INSERT IGNORE INTO categories (name) VALUES ('Web Development'), ('Graphic Design'), ('Writing'), ('Digital Marketing')");
+                    }
+                });
+
+                // 5. SETUP DISPUTES TABLE
+                const disputesTable = `
+                    CREATE TABLE IF NOT EXISTS disputes (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        order_id INT,
+                        raised_by INT,
+                        reason TEXT,
+                        status ENUM('open', 'resolved_refund', 'resolved_paid') DEFAULT 'open',
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+                        FOREIGN KEY (raised_by) REFERENCES users(id) ON DELETE CASCADE
+                    )
+                `;
+                db.query(disputesTable, (err) => {
+                    if (err) console.error("❌ Disputes Table Error:", err);
+                });
+
+                // 6. MIGRATION: Fix missing columns for existing tables
                 const alterItems = [
-                    "ALTER TABLE portfolio_items ADD COLUMN image_url TEXT;",
-                    "ALTER TABLE portfolio_items ADD COLUMN tools VARCHAR(255);",
-                    "ALTER TABLE portfolio_items ADD COLUMN link VARCHAR(255);"
+                    "ALTER TABLE portfolio_items ADD COLUMN link VARCHAR(255);",
+                    "ALTER TABLE orders ADD COLUMN milestones TEXT;",
+                    "ALTER TABLE freelancer_profiles ADD COLUMN achievements TEXT;",
+                    "ALTER TABLE users ADD COLUMN status ENUM('active', 'disabled') DEFAULT 'active';"
                 ];
                 alterItems.forEach(sql => {
                     db.query(sql, (e) => {
@@ -330,15 +363,8 @@ app.get('/api/bids/job/:id', (req, res) => {
 });
 
 // --- ORDERS & CHAT & DELIVERY ---
-app.post('/api/orders/hire', (req, res) => {
-    const { requirement_id, client_id, freelancer_id, bid_id, price } = req.body;
-    db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status) VALUES (?, ?, ?, ?, ?, 'in_progress')",
-        [requirement_id, client_id, freelancer_id, bid_id, price], (err) => {
-            if (err) return res.status(500).json(err);
-            notify(freelancer_id, 'order', `You have been hired!`);
-            res.json({ message: "Hired!" });
-        });
-});
+// (Duplicate removed - integrated below)
+
 
 app.get('/api/orders/freelancer/:id', (req, res) => {
     db.query(`SELECT orders.*, requirements.title as job_title, requirements.description as job_description, users.name as client_name FROM orders 
@@ -401,13 +427,13 @@ app.post('/api/payment/verify', (req, res) => {
 
 app.post('/api/orders/hire', (req, res) => {
     const { requirement_id, client_id, freelancer_id, bid_id, price } = req.body;
+    const initialMilestones = JSON.stringify([{ step: 'Hired', date: new Date().toISOString() }]);
 
     // Create actual order
-    db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status) VALUES (?, ?, ?, ?, ?, 'in_progress')",
-        [requirement_id, client_id, freelancer_id, bid_id, price], (err, result) => {
+    db.query("INSERT INTO orders (requirement_id, client_id, freelancer_id, bid_id, total_price, status, milestones) VALUES (?, ?, ?, ?, ?, 'in_progress', ?)",
+        [requirement_id, client_id, freelancer_id, bid_id, price, initialMilestones], (err, result) => {
             if (err) return res.status(500).json(err);
 
-            // Mark bid as 'selected' if logic exists, otherwise just notify
             notify(freelancer_id, 'order', `You've been hired! New order created.`);
             res.json({ message: "Order Placed Successfully", orderId: result.insertId });
         });
@@ -465,19 +491,21 @@ app.post('/api/messages', (req, res) => {
 
 // DELIVER WORK
 app.post('/api/orders/deliver', upload.single('workFile'), (req, res) => {
-    const { order_id, sender_id, text } = req.body;
+    const { order_id, sender_id, text, type } = req.body;
     const file_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
     const msgText = text + (file_url ? ` [FILE: ${file_url}]` : "");
     const now = new Date();
     const sent_date = now.toISOString().split('T')[0];
     const sent_time = now.toTimeString().split(' ')[0];
 
+    const newStatus = type === 'final' ? 'final_delivered' : 'draft_delivered';
+
     db.query("INSERT INTO messages (order_id, sender_id, text, file_id, sent_date, sent_time) VALUES (?, ?, ?, NULL, ?, ?)",
         [order_id, sender_id, msgText, sent_date, sent_time], (err) => {
             if (err) return res.status(500).json({ error: err.message });
-            db.query("UPDATE orders SET status = 'final_delivered' WHERE id = ?", [order_id], () => {
+            db.query("UPDATE orders SET status = ? WHERE id = ?", [newStatus, order_id], () => {
                 // Notify Client
-                db.query("SELECT client_id FROM orders WHERE id = ?", [order_id], (e, r) => notify(r[0].client_id, 'delivery', 'Freelancer delivered work!'));
+                db.query("SELECT client_id FROM orders WHERE id = ?", [order_id], (e, r) => notify(r[0].client_id, 'delivery', `Freelancer sent a ${type} delivery!`));
                 res.json({ message: "Delivered" });
             });
         });
@@ -599,60 +627,7 @@ app.get('/api/admin/stats', (req, res) => {
     });
 });
 
-app.get('/api/admin/users', (req, res) => {
-    db.query("SELECT * FROM users ORDER BY created_at DESC", (err, resu) => res.json(resu));
-});
 
-app.delete('/api/admin/user/:id', (req, res) => {
-    db.query("DELETE FROM users WHERE id = ?", [req.params.id], () => res.json({ message: "Deleted" }));
-});
-
-app.get('/api/admin/gigs', (req, res) => {
-    db.query("SELECT gigs.*, users.name as freelancer_name FROM gigs JOIN users ON gigs.freelancer_id = users.id ORDER BY created_at DESC", (err, resu) => res.json(resu));
-});
-
-app.delete('/api/admin/gig/:id', (req, res) => {
-    db.query("DELETE FROM gigs WHERE id = ?", [req.params.id], () => res.json({ message: "Deleted" }));
-});
-
-app.put('/api/admin/user/status/:id', (req, res) => {
-    const { status } = req.body;
-    db.query("UPDATE users SET status = ? WHERE id = ?", [status, req.params.id], () => res.json({ message: `User ${status}` }));
-});
-
-app.get('/api/admin/disputes', (req, res) => {
-    db.query(`SELECT d.*, o.total_price, u.name as raised_by_name FROM disputes d JOIN orders o ON d.order_id = o.id JOIN users u ON d.raised_by = u.id WHERE d.status = 'open'`, (err, results) => res.json(results));
-});
-
-app.post('/api/admin/dispute/resolve', (req, res) => {
-    const { dispute_id, order_id, resolution } = req.body;
-    const orderStatus = resolution === 'resolved_refund' ? 'cancelled' : 'completed';
-    db.query("UPDATE disputes SET status = ? WHERE id = ?", [resolution, dispute_id], () => {
-        db.query("UPDATE orders SET status = ? WHERE id = ?", [orderStatus, order_id], () => res.json({ message: "Resolved" }));
-    });
-});
-
-app.get('/api/admin/categories', (req, res) => {
-    db.query("SELECT * FROM categories", (err, results) => res.json(results));
-});
-
-app.post('/api/admin/categories', (req, res) => {
-    db.query("INSERT INTO categories (name) VALUES (?)", [req.body.name], (err, result) => res.json({ id: result.insertId, name: req.body.name }));
-});
-
-app.get('/api/admin/sprint-summary', (req, res) => {
-    db.query("SELECT COUNT(*) as count FROM orders WHERE status='completed'", (err, res1) => {
-        const completed = res1[0].count;
-        db.query("SELECT SUM(total_price) as total FROM orders", (err, res2) => {
-            res.json({
-                sprint_week: "Week 12 (Current)",
-                orders_completed: completed,
-                revenue_flow: res2[0].total || 0,
-                active_freelancers: 5
-            });
-        });
-    });
-});
 // DELETE GIG (Freelancer)
 app.delete('/api/gigs/:id', (req, res) => {
     db.query("DELETE FROM gigs WHERE id = ?", [req.params.id], (err) => {
@@ -705,7 +680,241 @@ app.post('/api/ratings', (req, res) => {
         });
 });
 
+// --- NEW FEATURES: LEADERBOARD, MILESTONES, MATCHMAKING ---
+
+// 1. Leaderboard: Top 5 Freelancers
+app.get('/api/analytics/leaderboard', (req, res) => {
+    const sql = `
+        SELECT u.id, u.name, u.profile_pic, fp.skill_score, fp.skills,
+               (SELECT COUNT(*) FROM orders WHERE freelancer_id = u.id AND status = 'completed') as completions,
+               (SELECT AVG(stars) FROM ratings WHERE freelancer_id = u.id) as avg_rating
+        FROM users u
+        JOIN freelancer_profiles fp ON u.id = fp.user_id
+        WHERE u.role = 'freelancer'
+        ORDER BY (fp.skill_score * 0.4 + (SELECT COUNT(*) FROM orders WHERE freelancer_id = u.id AND status = 'completed') * 10) DESC
+        LIMIT 5
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+// 2. Project Roadmap: Update Milestones
+app.post('/api/orders/:id/milestone', (req, res) => {
+    const { milestones } = req.body; // Expects JSON string
+    db.query("UPDATE orders SET milestones = ? WHERE id = ?", [milestones, req.params.id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Milestone Updated" });
+    });
+});
+
+// 3. AI Matchmaking (Skill-based)
+app.post('/api/matchmaking', (req, res) => {
+    const { requirements, title } = req.body;
+    if (!requirements && !title) return res.json([]);
+
+    const sql = `
+        SELECT u.id, u.name, u.profile_pic, fp.skills, fp.bio, fp.skill_score
+        FROM users u
+        JOIN freelancer_profiles fp ON u.id = fp.user_id
+        WHERE u.role = 'freelancer'
+    `;
+
+    db.query(sql, (err, freelancers) => {
+        if (err) return res.status(500).json(err);
+
+        const searchPool = ((title || "") + " " + (requirements || "")).toLowerCase();
+
+        const scored = freelancers.map(f => {
+            let matchPoints = 0;
+            const matchedSkills = [];
+            const skills = (f.skills || "").toLowerCase().split(",");
+
+            skills.forEach(s => {
+                const trimmed = s.trim();
+                if (trimmed.length > 0) {
+                    // Use word boundary regex for exact matches
+                    const regex = new RegExp(`\\b${trimmed.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+                    if (regex.test(searchPool)) {
+                        matchPoints += 1;
+                        matchedSkills.push(trimmed);
+                    }
+                }
+            });
+
+            // Calculate Skill Match (out of 100)
+            const skillMatchScore = skills.length > 0 ? (matchPoints / Math.max(skills.length, 1)) * 100 : 0;
+
+            // Weighted Final Score: 70% skill match, 30% reputation (capped at 100)
+            const finalScore = Math.round((skillMatchScore * 0.7) + (Math.min(f.skill_score, 100) * 0.3));
+
+            return { ...f, matchScore: finalScore, matchedSkills };
+        }).filter(f => f.matchScore > 10).sort((a, b) => b.matchScore - a.matchScore);
+
+        res.json(scored.slice(0, 3));
+    });
+});
+
+// ================= ADMIN ROUTES ================= //
+
+// 1. Get Platform Stats
+app.get('/api/admin/stats', (req, res) => {
+    const sql = `
+        SELECT 
+            (SELECT COUNT(*) FROM users) as users,
+            (SELECT COUNT(*) FROM gigs) as gigs,
+            (SELECT COUNT(*) FROM orders) as orders
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results[0]);
+    });
+});
+
+// 2. Get Sprint Summary (Last 7 Days)
+app.get('/api/admin/sprint-summary', (req, res) => {
+    const sql = `
+        SELECT 
+            'Current Week' as sprint_week,
+            (SELECT COUNT(*) FROM orders WHERE status = 'completed' AND updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) as orders_completed,
+            (SELECT COALESCE(SUM(total_price), 0) FROM orders WHERE status = 'completed' AND updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) as revenue_flow,
+            (SELECT COUNT(DISTINCT freelancer_id) FROM orders WHERE updated_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)) as active_freelancers
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results[0]);
+    });
+});
+
+app.get('/api/admin/timeline', (req, res) => {
+    const sql = `
+        SELECT 
+            DAYNAME(created_at) as day,
+            COUNT(*) as count
+        FROM orders
+        WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+        GROUP BY DAYNAME(created_at)
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json(err);
+
+        // Format for frontend
+        const defaultDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const map = {};
+        defaultDays.forEach(d => map[d] = 0);
+
+        results.forEach(r => {
+            if (r.day) {
+                const shortDay = r.day.substring(0, 3);
+                if (map[shortDay] !== undefined) map[shortDay] = r.count;
+            }
+        });
+
+        res.json(map);
+    });
+});
+
+// 3. User Management
+app.get('/api/admin/users', (req, res) => {
+    db.query("SELECT id, name, email, role, status FROM users ORDER BY created_at DESC", (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+app.put('/api/admin/user/status/:id', (req, res) => {
+    const { status } = req.body;
+    db.query("UPDATE users SET status = ? WHERE id = ?", [status, req.params.id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "User status updated" });
+    });
+});
+
+// 4. Manage Categories
+app.get('/api/admin/categories', (req, res) => {
+    db.query("SELECT * FROM categories", (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+app.post('/api/admin/categories', (req, res) => {
+    const { name } = req.body;
+    if (!name) return res.status(400).json({ error: "Name required" });
+    db.query("INSERT INTO categories (name) VALUES (?)", [name], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Category added" });
+    });
+});
+
+// 5. Manage Disputes
+app.get('/api/admin/disputes', (req, res) => {
+    const sql = `
+        SELECT 
+            d.*, 
+            u.name as raised_by_name,
+            c.name as client_name,
+            c.email as client_email,
+            f.name as freelancer_name,
+            f.email as freelancer_email,
+            o.total_price as price,
+            req.title as job_title
+        FROM disputes d 
+        JOIN users u ON d.raised_by = u.id 
+        JOIN orders o ON d.order_id = o.id
+        JOIN users c ON o.client_id = c.id
+        JOIN users f ON o.freelancer_id = f.id
+        LEFT JOIN requirements req ON o.requirement_id = req.id
+        WHERE d.status = 'open'
+    `;
+    db.query(sql, (err, results) => {
+        if (err) return res.status(500).json(err);
+        res.json(results);
+    });
+});
+
+app.post('/api/admin/dispute/resolve', (req, res) => {
+    const { dispute_id, order_id, resolution } = req.body;
+    // resolution = 'resolved_refund' or 'resolved_paid'
+
+    // 1. Update dispute status
+    db.query("UPDATE disputes SET status = ? WHERE id = ?", [resolution, dispute_id], (err) => {
+        if (err) return res.status(500).json(err);
+
+        // 2. Update order status based on resolution
+        const orderStatus = resolution === 'resolved_refund' ? 'cancelled' : 'completed';
+        db.query("UPDATE orders SET status = ? WHERE id = ?", [orderStatus, order_id], (err) => {
+            if (err) return res.status(500).json(err);
+            res.json({ message: "Dispute resolved and order updated." });
+        });
+    });
+});
+
+// ================= USER DISPUTES ================= //
+app.post('/api/disputes', (req, res) => {
+    const { order_id, raised_by, reason } = req.body;
+    db.query("INSERT INTO disputes (order_id, raised_by, reason) VALUES (?, ?, ?)", [order_id, raised_by, reason], (err) => {
+        if (err) return res.status(500).json(err);
+
+        db.query("UPDATE orders SET status = 'in_dispute' WHERE id = ?", [order_id], (err2) => {
+            if (err2) console.error("Could not update order status:", err2);
+            res.json({ message: "Dispute submitted to Admin" });
+        });
+    });
+});
+
 const PORT = 5000;
+
+// ================= USER PROFILE ================= //
+app.delete('/api/users/:id', (req, res) => {
+    // Delete account
+    db.query("DELETE FROM users WHERE id = ?", [req.params.id], (err) => {
+        if (err) return res.status(500).json(err);
+        res.json({ message: "Account deleted successfully." });
+    });
+});
+
 app.listen(PORT, () => {
     console.log(`🚀 Server running on port ${PORT}`);
 });

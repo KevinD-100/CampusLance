@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import ProjectRoadmap from './ProjectRoadmap';
+
 
 const ManageOrderModal = ({ order, user, onClose, onUpdate }) => {
     const [deliveryType, setDeliveryType] = useState('draft');
@@ -26,6 +28,7 @@ const ManageOrderModal = ({ order, user, onClose, onUpdate }) => {
         formData.append('workFile', deliveryFile);
         formData.append('order_id', order.id);
         formData.append('sender_id', user.id);
+        formData.append('type', deliveryType);
 
         const typeLabel = deliveryType === 'draft' ? '📝 DRAFT' : '✅ FINAL DELIVERY';
         formData.append('text', `${typeLabel}: ${deliveryNote || "Here is the work file."}`);
@@ -72,24 +75,9 @@ const ManageOrderModal = ({ order, user, onClose, onUpdate }) => {
                         </div>
                     </div>
 
-                    {/* Progress Tracker */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '30px', position: 'relative', padding: '0 20px' }}>
-                        {/* Connecting Line */}
-                        <div style={{ position: 'absolute', top: '15px', left: '30px', right: '30px', height: '3px', background: '#E2E8F0', zIndex: 0 }}></div>
+                    {/* Progress Tracker (NEW IMPROVED) */}
+                    <ProjectRoadmap currentStatus={order.status} milestones={order.milestones} />
 
-                        {steps.map((step, idx) => (
-                            <div key={idx} style={{ position: 'relative', zIndex: 1, textAlign: 'center' }}>
-                                <div style={{
-                                    width: '30px', height: '30px', borderRadius: '50%', background: step.done ? '#48BB78' : '#CBD5E0',
-                                    color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', margin: '0 auto',
-                                    border: '3px solid white', boxShadow: '0 2px 5px rgba(0,0,0,0.1)'
-                                }}>
-                                    {step.done ? '✓' : idx + 1}
-                                </div>
-                                <div style={{ fontSize: '0.8rem', fontWeight: '600', color: step.done ? '#2D3748' : '#A0AEC0', marginTop: '5px' }}>{step.label}</div>
-                            </div>
-                        ))}
-                    </div>
 
                     {/* Revision Alert */}
                     {order.status === 'revision_requested' && (

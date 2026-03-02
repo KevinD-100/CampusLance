@@ -186,7 +186,9 @@ const Dashboard = () => {
                   filteredNotifs.map(n => (
                     <div key={n.id} style={{ padding: '12px', borderBottom: '1px solid #eee', fontSize: '0.85rem', opacity: n.is_read ? 0.5 : 1, background: n.is_read ? 'white' : '#F0FFF4' }}>
                       {JSON.parse(n.payload).message}
-                      <div style={{ fontSize: '0.7rem', color: '#aaa', marginTop: '2px' }}>{new Date(n.created_at).toLocaleTimeString()}</div>
+                      <div style={{ fontSize: '0.7rem', color: '#aaa', marginTop: '2px' }}>
+                        {new Date(n.created_at).toLocaleDateString()} at {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
                     </div>
                   ))
                 }
@@ -210,16 +212,76 @@ const Dashboard = () => {
         )}
 
         {currentSection === 'settings' && (
-          <div style={{ padding: '30px', background: 'white', borderRadius: '12px' }}>
-            <h3>⚙️ Settings</h3>
-            <div style={{ marginTop: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '10px' }}>
-                <input type="checkbox" defaultChecked /> Email Notifications
-              </label>
-              <label style={{ display: 'block', marginBottom: '10px' }}>
-                <input type="checkbox" defaultChecked /> Sound Alerts
-              </label>
-              <button className="btn-small outline" style={{ marginTop: '20px' }} onClick={() => alert("Settings Saved")}>Save Preferences</button>
+          <div className="animate-fade-in" style={{ padding: '30px', background: 'white', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.03)', maxWidth: '800px', margin: '0 auto' }}>
+            <h2 style={{ margin: '0 0 5px 0', color: '#2D3748', borderBottom: '2px solid #EDF2F7', paddingBottom: '15px' }}>⚙️ Personal Settings</h2>
+            <p style={{ color: '#718096', fontSize: '0.9rem', marginBottom: '30px' }}>Manage your preferences and notification settings.</p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '25px' }}>
+              {/* Profile Details */}
+              <div style={{ padding: '20px', background: '#F7FAFC', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <h4 style={{ margin: '0 0 15px 0', color: '#4A5568', display: 'flex', alignItems: 'center', gap: '8px' }}>👤 Account Details</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#A0AEC0', marginBottom: '5px' }}>Full Name</label>
+                    <input className="form-input" disabled value={user?.name || ''} style={{ background: '#EDF2F7', color: '#718096', cursor: 'not-allowed' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '0.8rem', color: '#A0AEC0', marginBottom: '5px' }}>Email Address</label>
+                    <input className="form-input" disabled value={user?.email || ''} style={{ background: '#EDF2F7', color: '#718096', cursor: 'not-allowed' }} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Notifications */}
+              <div style={{ padding: '20px', background: 'white', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
+                <h4 style={{ margin: '0 0 15px 0', color: '#4A5568', display: 'flex', alignItems: 'center', gap: '8px' }}>🔔 Notifications</h4>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0', borderBottom: '1px solid #EDF2F7' }}>
+                  <div>
+                    <div style={{ fontWeight: '600', color: '#2D3748' }}>Email Notifications</div>
+                    <div style={{ fontSize: '0.8rem', color: '#718096' }}>Receive emails about order updates and messages.</div>
+                  </div>
+                  <label className="toggle-switch">
+                    <input type="checkbox" defaultChecked />
+                    <span className="slider round"></span>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 0' }}>
+                  <div>
+                    <div style={{ fontWeight: '600', color: '#2D3748' }}>Push Alerts</div>
+                    <div style={{ fontSize: '0.8rem', color: '#718096' }}>Enable browser alerts for real-time updates.</div>
+                  </div>
+                  <label className="toggle-switch">
+                    <input type="checkbox" defaultChecked />
+                    <span className="slider round"></span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Danger Zone */}
+              <div style={{ padding: '20px', background: '#FFF5F5', borderRadius: '12px', border: '1px dashed #FEB2B2' }}>
+                <h4 style={{ margin: '0 0 10px 0', color: '#C53030' }}>Danger Zone</h4>
+                <p style={{ fontSize: '0.85rem', color: '#742A2A', marginBottom: '15px' }}>Request account deletion. This action cannot be undone and will erase all data.</p>
+                <button className="btn-small" style={{ background: 'transparent', color: '#E53E3E', border: '1px solid #E53E3E' }} onClick={async () => {
+                  if (window.confirm("🚨 WARNING: Are you strictly sure you want to permanently delete your account? All gigs, orders, and history will be lost. This CANNOT be undone.")) {
+                    try {
+                      const res = await fetch(`http://localhost:5000/api/users/${user.id}`, { method: 'DELETE' });
+                      if (res.ok) {
+                        alert("Account successfully deleted. We're sorry to see you go.");
+                        handleLogout();
+                      } else {
+                        alert("Error deleting account.");
+                      }
+                    } catch (err) { console.error(err); alert("Network error."); }
+                  }
+                }}>Permanently Delete Account</button>
+              </div>
+
+            </div>
+
+            <div style={{ marginTop: '30px', textAlign: 'right', borderTop: '2px solid #EDF2F7', paddingTop: '20px' }}>
+              <button className="create-btn-primary" style={{ padding: '12px 30px', fontSize: '1rem', borderRadius: '8px' }} onClick={() => alert("Settings preferences saved.")}>Save Preferences</button>
             </div>
           </div>
         )}

@@ -2,7 +2,10 @@ import React, { useState, useEffect } from 'react';
 
 const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
     const [revisionNote, setRevisionNote] = useState("");
+    const [disputeReason, setDisputeReason] = useState("");
     const [latestDelivery, setLatestDelivery] = useState(null);
+    const [isDisputing, setIsDisputing] = useState(false);
+
 
     // Fetch Latest Delivery File
     useEffect(() => {
@@ -97,7 +100,26 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
             alert("⚠️ Revision Requested.");
             onUpdate();
         }
+    }; // Close handleSubmit
+
+    const handleDispute = async () => {
+        if (!disputeReason.trim()) return alert("Please specify a reason for the dispute.");
+        if (!window.confirm("Are you sure you want to raise a dispute? This will involve admin mediation.")) return;
+
+        try {
+            await fetch('http://localhost:5000/api/disputes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ order_id: order.id, raised_by: user.id, reason: disputeReason })
+            });
+            alert("⚠️ Dispute has been raised and sent to the Admin team.");
+            onUpdate();
+        } catch (err) {
+            console.error(err);
+            alert("Error raising dispute.");
+        }
     };
+
 
     return (
         <div className="modal-overlay">
@@ -171,6 +193,31 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
                                 <strong>Accept & Complete</strong>
                             </button>
                         </div>
+                    </div>
+
+                    {/* DISPUTE OPTION */}
+                    <div style={{ marginTop: '30px', borderTop: '1px solid #E2E8F0', paddingTop: '20px' }}>
+                        {!isDisputing ? (
+                            <div style={{ textAlign: 'center' }}>
+                                <span style={{ fontSize: '0.85rem', color: '#718096' }}>Not satisfied and cannot reach an agreement? </span>
+                                <button onClick={() => setIsDisputing(true)} style={{ background: 'none', border: 'none', color: '#E53E3E', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.85rem' }}>Raise a Dispute</button>
+                            </div>
+                        ) : (
+                            <div style={{ background: '#FFF5F5', padding: '15px', borderRadius: '8px', border: '1px solid #FEB2B2' }}>
+                                <h4 style={{ margin: '0 0 10px 0', color: '#C53030', fontSize: '0.95rem' }}>⚠️ Raise a Dispute</h4>
+                                <p style={{ fontSize: '0.8rem', color: '#742A2A', marginBottom: '10px' }}>Admins will review the project brief, communications, and deliveries to make a final decision on the payment.</p>
+                                <textarea
+                                    placeholder="Explain why you are raising a dispute..."
+                                    style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #FEB2B2', fontSize: '0.9rem', minHeight: '60px', marginBottom: '10px' }}
+                                    value={disputeReason}
+                                    onChange={(e) => setDisputeReason(e.target.value)}
+                                ></textarea>
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button onClick={handleDispute} className="btn-small" style={{ background: '#E53E3E', color: 'white', border: 'none', flex: 1 }}>Submit Dispute</button>
+                                    <button onClick={() => setIsDisputing(false)} className="btn-small outline" style={{ flex: 1 }}>Cancel</button>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                 </div>

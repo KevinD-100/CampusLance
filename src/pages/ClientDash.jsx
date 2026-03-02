@@ -5,6 +5,8 @@ import ChatWindow from '../components/ChatWindow';
 import ClientReviewModal from '../components/ClientReviewModal';
 import ClientRatingModal from '../components/ClientRatingModal';
 import ImageLightbox from '../components/ImageLightbox';
+import ProjectRoadmap from '../components/ProjectRoadmap';
+
 
 // 🔴 ADDED 'section' PROP
 const ClientDash = ({ user, section }) => {
@@ -42,6 +44,43 @@ const ClientDash = ({ user, section }) => {
   const [lightbox, setLightbox] = useState({ open: false, images: [], idx: 0 });
 
   const [hireDetails, setHireDetails] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [recommendations, setRecommendations] = useState([]);
+  const [loadingRecs, setLoadingRecs] = useState(false);
+  const [hasFetchedRecs, setHasFetchedRecs] = useState(false);
+
+  useEffect(() => {
+    fetchLeaderboard();
+  }, []);
+
+  const fetchLeaderboard = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/analytics/leaderboard');
+      const data = await res.json();
+      setLeaderboard(data);
+    } catch (err) { console.error(err); }
+  };
+
+  const fetchRecommendations = async (requirements, title) => {
+    if (loadingRecs) return;
+    console.log("🤖 Fetching Recs for:", { title, requirements });
+    setLoadingRecs(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/matchmaking', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requirements, title })
+      });
+      const data = await res.json();
+      console.log("🤖 Recs Received:", data);
+      setRecommendations(data);
+    } catch (err) {
+      console.error("🤖 Matchmaking Error:", err);
+    } finally {
+      setLoadingRecs(false);
+      setHasFetchedRecs(true);
+    }
+  };
 
   const handleHire = (job, bid) => {
     setHireDetails({ job, bid });
@@ -105,7 +144,14 @@ const ClientDash = ({ user, section }) => {
     }
   };
 
-  useEffect(() => { refreshData(); }, [user]); // Initial load (filters empty)
+  useEffect(() => { refreshData(); }, [user?.id]); // Stabilized dependency
+
+  // 🤖 AUTO-FETCH RECS ONCE JOBS LOAD (Guarded to prevent loops)
+  useEffect(() => {
+    if (myJobs.length > 0 && !hasFetchedRecs && !loadingRecs) {
+      fetchRecommendations(myJobs[0].description, myJobs[0].title);
+    }
+  }, [myJobs, hasFetchedRecs, loadingRecs]);
 
   // 🔴 UPDATE TAB WHEN PROP CHANGES
   useEffect(() => {
@@ -263,11 +309,14 @@ const ClientDash = ({ user, section }) => {
   // Helper
   const getProgress = (status) => {
     switch (status) {
-      case 'completed': return 'prog-100';
-      case 'final_delivered': return 'prog-90';
-      case 'revision_requested': return 'prog-90';
-      case 'in_progress': return 'prog-50';
-      default: return 'prog-10';
+      case 'pending': return 'w-10';
+      case 'in_progress': return 'w-30';
+      case 'draft_delivered': return 'w-60';
+      case 'final_delivered': return 'w-80';
+      case 'completed': return 'w-100';
+      case 'revision_requested': return 'w-40';
+      case 'cancelled': return 'w-0';
+      default: return 'w-10';
     }
   };
 
@@ -406,7 +455,12 @@ const ClientDash = ({ user, section }) => {
             {displayedOrders.map(order => (
               <div key={order.id} className="order-card-modern" style={{ borderLeft: `5px solid ${order.status === 'completed' ? '#48BB78' : order.status === 'revision_requested' ? '#F56565' : '#4299E1'}` }}>
                 <div className="oc-header"><div><h4 className="oc-title">{order.job_title}</h4><div className="oc-freelancer" onClick={() => setViewProfileId(order.freelancer_id)} style={{ cursor: 'pointer' }}><img src={`https://ui-avatars.com/api/?name=${order.freelancer_name}&background=random`} alt="F" /><span>{order.freelancer_name}</span></div></div><div className="oc-price">₹{order.total_price}</div></div>
-                <div><div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '5px', color: '#718096' }}><span>Status</span><span style={{ fontWeight: 'bold', textTransform: 'uppercase', color: order.status === 'revision_requested' ? '#C53030' : 'inherit' }}>{order.status.replace('_', ' ')}</span></div><div className="oc-progress-container"><div className={`oc-progress-fill ${getProgress(order.status)}`}></div></div></div>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', marginBottom: '5px', color: '#718096' }}><span>Status</span><span style={{ fontWeight: 'bold', textTransform: 'uppercase', color: order.status === 'revision_requested' ? '#C53030' : 'inherit' }}>{order.status.replace('_', ' ')}</span></div>
+                  <div className="oc-progress-container"><div className={`oc-progress-fill ${getProgress(order.status)}`}></div></div>
+                </div>
+                {/* 🗺️ PROJECT ROADMAP */}
+                <ProjectRoadmap currentStatus={order.status} milestones={order.milestones} />
                 <div className="oc-footer">
                   <button className="action-btn outline" onClick={() => setChatOrder(order)}>💬 Chat</button>
                   {order.status === 'final_delivered' && <button className="action-btn success" style={{ background: '#38B2AC', borderColor: '#319795', color: 'white' }} onClick={() => openReview(order)}>🔍 Review</button>}
@@ -512,17 +566,100 @@ const ClientDash = ({ user, section }) => {
 
             </div>
 
-            <div className="gigs-grid" style={{ marginTop: '20px' }}>
-              {gigs.map(gig => {
-                const isFav = favorites.includes(gig.freelancer_id);
-                return (
-                  <div key={gig.id} className="gig-card">
-                    <img src={gig.image_url || "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="} alt={gig.title} className="gig-img" onError={(e) => e.target.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="} />
-                    <div className="gig-info"><h4>{gig.title}</h4><div className="gig-meta"><span onClick={() => setViewProfileId(gig.freelancer_id)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>👤 {gig.freelancer_name}</span><span>⭐ 5.0</span></div><div className="gig-footer"><span className="gig-price">₹{gig.price}</span><button className="btn-small outline" onClick={() => navigate(`/gig/${gig.id}`)}>View Details</button></div></div>
-                    <button className={`fav-btn ${isFav ? 'active' : ''}`} onClick={() => toggleFavorite(gig.freelancer_id)} style={{ color: isFav ? '#E53E3E' : '#CBD5E0' }}>♥</button>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '20px', marginTop: '20px' }}>
+              <div className="gigs-grid" style={{ marginTop: 0 }}>
+                {gigs.map(gig => {
+                  const isFav = favorites.includes(gig.freelancer_id);
+                  const isTop = leaderboard.slice(0, 3).some(l => l.id === gig.freelancer_id);
+
+                  return (
+                    <div key={gig.id} className="gig-card" style={{ borderTop: isTop ? '3px solid #ECC94B' : 'none' }}>
+                      {isTop && <div style={{ position: 'absolute', top: 10, left: 10, background: '#ECC94B', color: '#744210', padding: '2px 8px', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 'bold', zIndex: 5 }}>🏆 TOP RATED</div>}
+                      <img src={gig.image_url || "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="} alt={gig.title} className="gig-img" onError={(e) => e.target.src = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI0MDAiIGhlaWdodD0iMjUwIiBzdHlsZT0iYmFja2dyb3VuZDoje2VlZXV9Ij48dGV4dCB4PSI1MCUiIHk9IjUwJSIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZmlsbD0iIzU1NSI+R2lnIEltYWdlPC90ZXh0Pjwvc3ZnPg=="} />
+                      <div className="gig-info">
+                        <h4>{gig.title}</h4>
+                        <div className="gig-meta">
+                          <span onClick={() => setViewProfileId(gig.freelancer_id)} style={{ cursor: 'pointer', textDecoration: 'underline' }}>👤 {gig.freelancer_name}</span>
+                          <span>⭐ 5.0</span>
+                        </div>
+                        {/* 🏅 ACHIEVEMENT BADGES */}
+                        <div style={{ display: 'flex', gap: '5px', marginTop: '8px' }}>
+                          {gig.skill_score > 50 && <span title="Skill Master" style={{ fontSize: '0.7rem', background: '#EBF8FF', color: '#2B6CB0', padding: '2px 6px', borderRadius: '4px' }}>🧠 Master</span>}
+                          {leaderboard.some(l => l.id === gig.freelancer_id && l.completions >= 1) && <span title="Expert" style={{ fontSize: '0.7rem', background: '#F0FFF4', color: '#276749', padding: '2px 6px', borderRadius: '4px' }}>🎖️ Expert</span>}
+                        </div>
+                        <div className="gig-footer"><span className="gig-price">₹{gig.price}</span><button className="btn-small outline" onClick={() => navigate(`/gig/${gig.id}`)}>View Details</button></div>
+                      </div>
+                      <button className={`fav-btn ${isFav ? 'active' : ''}`} onClick={() => toggleFavorite(gig.freelancer_id)} style={{ color: isFav ? '#E53E3E' : '#CBD5E0' }}>♥</button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* SIDEBAR: LEADERBOARD & RECS */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* LEADERBOARD */}
+                <div style={{ background: 'white', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #EDF2F7' }}>
+                  <h4 style={{ margin: '0 0 15px 0', fontSize: '1rem', color: '#2D3748', display: 'flex', alignItems: 'center', gap: '8px' }}>🏆 Top Performers</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {leaderboard.map((f, i) => (
+                      <div key={f.id} onClick={() => setViewProfileId(f.id)} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px', borderRadius: '10px', cursor: 'pointer', transition: 'background 0.2s', border: i === 0 ? '1px solid #ECC94B' : '1px solid transparent' }} onMouseOver={e => e.currentTarget.style.background = '#F7FAFC'} onMouseOut={e => e.currentTarget.style.background = 'transparent'}>
+                        <div style={{ fontWeight: 'bold', color: i === 0 ? '#ECC94B' : '#A0AEC0', width: '20px' }}>{i + 1}</div>
+                        <img src={f.profile_pic || `https://ui-avatars.com/api/?name=${f.name}&background=random`} style={{ width: '35px', height: '35px', borderRadius: '50%', objectFit: 'cover' }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#2D3748' }}>{f.name}</div>
+                          <div style={{ fontSize: '0.7rem', color: '#718096' }}>{f.skill_score} pts • {f.completions} jobs</div>
+                        </div>
+                        {i === 0 && <span title="Platform MVP">🏅</span>}
+                      </div>
+                    ))}
                   </div>
-                );
-              })}
+                </div>
+
+                {/* SMART MATCHES BIAS */}
+                {myJobs.length > 0 && (
+                  <div style={{ background: 'linear-gradient(135deg, #E6FFFA 0%, #B2F5EA 100%)', borderRadius: '16px', padding: '20px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #81E6D9', position: 'relative' }}>
+                    <div style={{ position: 'absolute', top: '15px', right: '15px', cursor: 'pointer', color: '#2C7A7B' }} title="How it works: We match your job keywords against freelancer skills and factor in their reputation score (70% skill match, 30% reputation).">ℹ️</div>
+                    <h4 style={{ margin: '0 0 10px 0', fontSize: '1rem', color: '#2C7A7B', display: 'flex', alignItems: 'center', gap: '8px' }}>🤖 Smart Matches</h4>
+                    <p style={{ fontSize: '0.75rem', color: '#285E61', marginBottom: '15px' }}>Top freelancers for: <strong>{myJobs[0].title}</strong></p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {loadingRecs ? (
+                        <div style={{ fontSize: '0.75rem', color: '#2C7A7B', textAlign: 'center', padding: '10px', background: 'rgba(255,255,255,0.5)', borderRadius: '8px' }}>🤖 Matching best talent...</div>
+                      ) : (
+                        recommendations.length > 0 ? recommendations.map(f => (
+                          <div key={f.id} onClick={() => setViewProfileId(f.id)} style={{ background: 'white', padding: '12px', borderRadius: '12px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', transition: 'transform 0.2s' }} onMouseOver={e => e.currentTarget.style.transform = 'scale(1.02)'} onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <img src={f.profile_pic || `https://ui-avatars.com/api/?name=${f.name}&background=random`} style={{ width: '30px', height: '30px', borderRadius: '50%', objectFit: 'cover' }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{f.name}</div>
+                                <div style={{ fontSize: '0.65rem', color: '#38A169', fontWeight: 'bold' }}>{f.matchScore}% Optimal Match</div>
+                              </div>
+                            </div>
+                            {f.matchedSkills && f.matchedSkills.length > 0 && (
+                              <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                                {f.matchedSkills.slice(0, 3).map((s, i) => (
+                                  <span key={i} style={{ fontSize: '0.6rem', background: '#F0FFF4', color: '#276749', padding: '1px 5px', borderRadius: '4px', border: '1px solid #C6F6D5' }}>{s}</span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )) : (
+                          <div style={{ fontSize: '0.75rem', color: '#718096', textAlign: 'center', padding: '10px', background: 'rgba(255,255,255,0.5)', borderRadius: '8px' }}>No matches found yet.</div>
+                        )
+                      )}
+                    </div>
+
+                    <button
+                      className="btn-small"
+                      style={{ width: '100%', background: '#319795', color: 'white', border: 'none', marginTop: '15px', opacity: loadingRecs ? 0.7 : 1, cursor: loadingRecs ? 'not-allowed' : 'pointer' }}
+                      onClick={() => fetchRecommendations(myJobs[0].description, myJobs[0].title)}
+                      disabled={loadingRecs}
+                    >
+                      {loadingRecs ? 'Refining...' : 'Refresh Picks'}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
