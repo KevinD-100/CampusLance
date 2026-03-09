@@ -9,7 +9,9 @@ const crypto = require('crypto');
 
 const app = express();
 
-app.use(cors());
+app.use(cors({
+    origin: "https://campus-lance.vercel.app"
+}));
 app.use(express.json());
 // 🟢 FIX: Allow Razorpay Popups to communicate
 app.use((req, res, next) => {
