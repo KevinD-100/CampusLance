@@ -6,7 +6,7 @@ import { BrowserRouter } from 'react-router-dom'
 import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // 🔴 PASTE YOUR GOOGLE CLIENT ID INSIDE THE QUOTES BELOW 🔴
-const clientId = "325596799470-3v9ocbf252t1les8pdhqs4oj3q18lb2v.apps.googleusercontent.com";
+const clientId = "606965970576-k3oqag0c4u9h1plgli9nlger6uufu0en.apps.googleusercontent.com";
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
