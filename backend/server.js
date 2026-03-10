@@ -229,7 +229,7 @@ app.post('/api/auth/reset-password', (req, res) => {
 // 1. CREATE GIG (Professional)
 app.post('/api/gigs', upload.single('image'), (req, res) => {
     const { freelancer_id, title, description, price, delivery_days, category, revisions, requirements, skills } = req.body;
-    const image_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
+    const image_url = req.file ? `https://campuslance.onrender.com/uploads/${req.file.filename}` : null;
 
     const sql = `
         INSERT INTO gigs 
@@ -297,7 +297,7 @@ app.put('/api/gigs/:id', upload.single('image'), (req, res) => {
     const { title, description, price, delivery_days } = req.body;
     let sql = "UPDATE gigs SET title=?, description=?, price=?, delivery_days=?";
     let params = [title, description, price, delivery_days];
-    if (req.file) { sql += ", image_url=?"; params.push(`http://localhost:5000/uploads/${req.file.filename}`); }
+    if (req.file) { sql += ", image_url=?"; params.push(`https://campuslance.onrender.com/uploads/${req.file.filename}`); }
     sql += " WHERE id=?"; params.push(req.params.id);
     db.query(sql, params, (err) => { if (err) return res.status(500).json(err); res.json({ message: "Updated" }); });
 });
@@ -508,7 +508,7 @@ app.post('/api/messages', (req, res) => {
 // DELIVER WORK
 app.post('/api/orders/deliver', upload.single('workFile'), (req, res) => {
     const { order_id, sender_id, text, type } = req.body;
-    const file_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : null;
+    const file_url = req.file ? `https://campuslance.onrender.com/uploads/${req.file.filename}` : null;
     const msgText = text + (file_url ? ` [FILE: ${file_url}]` : "");
     const now = new Date();
     const sent_date = now.toISOString().split('T')[0];
@@ -567,7 +567,7 @@ app.get('/api/profile/:id', (req, res) => {
 app.put('/api/profile/:id', upload.single('profilePic'), (req, res) => {
     const userId = req.params.id;
     const { name, bio, skills } = req.body;
-    let profile_pic_url = req.file ? `http://localhost:5000/uploads/${req.file.filename}` : undefined;
+    let profile_pic_url = req.file ? `https://campuslance.onrender.com/uploads/${req.file.filename}` : undefined;
 
     let userSql = "UPDATE users SET name = ?";
     let userParams = [name];
@@ -592,7 +592,7 @@ app.post('/api/portfolio', upload.array('images'), (req, res) => {
     // Handle Multiple Files
     let image_urls = [];
     if (req.files && req.files.length > 0) {
-        image_urls = req.files.map(f => `http://localhost:5000/uploads/${f.filename}`);
+        image_urls = req.files.map(f => `https://campuslance.onrender.com/uploads/${f.filename}`);
     } else if (req.body.image_url) {
         // Manual string fallback
     }
