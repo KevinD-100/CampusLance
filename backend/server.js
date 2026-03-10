@@ -24,10 +24,11 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // 1. DATABASE CONNECTION
 const db = mysql.createConnection({
-    host: '127.0.0.1',
-    user: 'root',
-    password: '',
-    database: 'campuslance'
+    host: process.env.MYSQLHOST,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
+    port: process.env.MYSQLPORT || 3306
 });
 
 db.connect((err) => {

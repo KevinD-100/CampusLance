@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 import '../pages/Dashboard.css'; // Re-use dashboard styles
 
@@ -89,7 +90,7 @@ const SkillAssessment = ({ user, onComplete }) => {
 
         // Submit Score to Backend
         // (Assuming exact route from before, but we can update if needed)
-        fetch('http://localhost:5000/api/quiz/submit', {
+        fetch(`${API_URL}/api/quiz/submit`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: user.id, score: score })
         }).catch(err => console.error("Score submit error", err));

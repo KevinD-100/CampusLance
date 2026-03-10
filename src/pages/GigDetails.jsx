@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './Dashboard.css';
@@ -15,7 +16,7 @@ const GigDetails = () => {
 
     useEffect(() => {
         // Fetch Gig
-        fetch(`http://localhost:5000/api/gigs/single/${id}`)
+        fetch(`${API_URL}/api/gigs/single/${id}`)
             .then(res => res.json())
             .then(data => {
                 setGig(data);
@@ -23,7 +24,7 @@ const GigDetails = () => {
 
                 // Fetch Portfolio when gig loads
                 if (data.freelancer_id) {
-                    fetch(`http://localhost:5000/api/portfolio/${data.freelancer_id}`)
+                    fetch(`${API_URL}/api/portfolio/${data.freelancer_id}`)
                         .then(r => r.json())
                         .then(p => setPortfolio(Array.isArray(p) ? p : []))
                         .catch(e => console.error(e));
@@ -32,7 +33,7 @@ const GigDetails = () => {
             .catch(err => { console.error(err); setLoading(false); });
 
         if (user) {
-            fetch(`http://localhost:5000/api/favorites/${user.id}`)
+            fetch(`${API_URL}/api/favorites/${user.id}`)
                 .then(res => res.json())
                 .then(ids => setGig(prev => {
                     // Safe check if prev exists
@@ -51,7 +52,7 @@ const GigDetails = () => {
                 const deadline = new Date();
                 deadline.setDate(deadline.getDate() + parseInt(gig.delivery_days || 3));
 
-                const response = await fetch('http://localhost:5000/api/orders', {
+                const response = await fetch(`${API_URL}/api/orders`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -76,7 +77,7 @@ const GigDetails = () => {
     const handleMessage = async () => {
         if (!user) return navigate('/login');
         try {
-            const res = await fetch('http://localhost:5000/api/chat/start', {
+            const res = await fetch(`${API_URL}/api/chat/start`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ client_id: user.id, freelancer_id: gig.freelancer_id, gig_id: gig.id, gig_title: gig.title })
@@ -90,7 +91,7 @@ const GigDetails = () => {
 
     const toggleFavorite = async () => {
         if (!user) return;
-        await fetch('http://localhost:5000/api/favorites', {
+        await fetch(`${API_URL}/api/favorites`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ user_id: user.id, target_id: gig.freelancer_id, fav_type: 'freelancer' })
         });

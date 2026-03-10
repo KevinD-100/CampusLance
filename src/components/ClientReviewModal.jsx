@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 
 const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
@@ -11,7 +12,7 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
     useEffect(() => {
         const fetchMessages = async () => {
             try {
-                const res = await fetch(`http://localhost:5000/api/messages/${order.id}`);
+                const res = await fetch(`${API_URL}/api/messages/${order.id}`);
                 const msgs = await res.json();
                 // Find last message with FILE
                 const deliveryMsg = [...msgs].reverse().find(m => m.text && m.text.includes("[FILE:"));
@@ -35,7 +36,7 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
 
             try {
                 // 1. Create Razorpay Order
-                const resOrder = await fetch('http://localhost:5000/api/payment/create-order', {
+                const resOrder = await fetch(`${API_URL}/api/payment/create-order`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ amount: order.total_price })
@@ -56,7 +57,7 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
                     order_id: orderData.id,
                     handler: async (response) => {
                         // 3. Verify Payment
-                        const resVerify = await fetch('http://localhost:5000/api/payment/verify', {
+                        const resVerify = await fetch(`${API_URL}/api/payment/verify`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
                             body: JSON.stringify(response)
@@ -65,7 +66,7 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
 
                         if (verifyData.status === 'success') {
                             // 4. Finalize Review on Backend
-                            await fetch('http://localhost:5000/api/orders/review', {
+                            await fetch(`${API_URL}/api/orders/review`, {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ order_id: order.id, client_id: user.id, status, feedback: revisionNote })
@@ -92,7 +93,7 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
             }
         } else {
             // Logic for Revision Requested (No Payment)
-            await fetch('http://localhost:5000/api/orders/review', {
+            await fetch(`${API_URL}/api/orders/review`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: order.id, client_id: user.id, status, feedback: revisionNote })
@@ -107,7 +108,7 @@ const ClientReviewModal = ({ order, user, onClose, onUpdate }) => {
         if (!window.confirm("Are you sure you want to raise a dispute? This will involve admin mediation.")) return;
 
         try {
-            await fetch('http://localhost:5000/api/disputes', {
+            await fetch(`${API_URL}/api/disputes`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: order.id, raised_by: user.id, reason: disputeReason })

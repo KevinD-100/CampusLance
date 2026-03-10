@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState } from 'react';
 
 const ClientRatingModal = ({ order, user, onClose, onSubmit }) => {
@@ -6,7 +7,7 @@ const ClientRatingModal = ({ order, user, onClose, onSubmit }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        await fetch('http://localhost:5000/api/ratings', {
+        await fetch(`${API_URL}/api/ratings`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...ratingData, order_id: order.id, client_id: user.id, freelancer_id: order.freelancer_id })
         });

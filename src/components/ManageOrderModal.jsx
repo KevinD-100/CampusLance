@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 import ProjectRoadmap from './ProjectRoadmap';
 
@@ -11,7 +12,7 @@ const ManageOrderModal = ({ order, user, onClose, onUpdate }) => {
     // Fetch Revision Feedback if needed
     useEffect(() => {
         if (order.status === 'revision_requested') {
-            fetch(`http://localhost:5000/api/messages/${order.id}`)
+            fetch(`${API_URL}/api/messages/${order.id}`)
                 .then(res => res.json())
                 .then(msgs => {
                     const revMsg = [...msgs].reverse().find(m => m.text.includes("⚠️ REVISION REQUESTED:"));
@@ -33,7 +34,7 @@ const ManageOrderModal = ({ order, user, onClose, onUpdate }) => {
         const typeLabel = deliveryType === 'draft' ? '📝 DRAFT' : '✅ FINAL DELIVERY';
         formData.append('text', `${typeLabel}: ${deliveryNote || "Here is the work file."}`);
 
-        await fetch('http://localhost:5000/api/orders/deliver', { method: 'POST', body: formData });
+        await fetch(`${API_URL}/api/orders/deliver`, { method: 'POST', body: formData });
 
         alert(`${typeLabel} Sent Successfully!`);
         onUpdate();

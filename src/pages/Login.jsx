@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
@@ -66,7 +67,7 @@ const Login = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${API_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
@@ -90,7 +91,7 @@ const Login = () => {
   const handleGoogleSuccess = async (credentialResponse) => {
     const decoded = jwtDecode(credentialResponse.credential);
     try {
-      const res = await fetch('http://localhost:5000/api/auth/google', {
+      const res = await fetch(`${API_URL}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: decoded.name, email: decoded.email }),

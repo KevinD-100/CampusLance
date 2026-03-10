@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
@@ -50,12 +51,12 @@ const FreelancerDash = ({ user, section }) => {
       setLoading(true);
 
       // Fetch My Gigs
-      fetch(`http://localhost:5000/api/gigs/my/${user.id}`)
+      fetch(`${API_URL}/api/gigs/my/${user.id}`)
         .then(res => res.json())
         .then(d => { if (Array.isArray(d)) setMyGigs(d); });
 
       // Fetch Jobs
-      fetch('http://localhost:5000/api/requirements')
+      fetch(`${API_URL}/api/requirements`)
         .then(res => res.json())
         .then(data => {
           setRequests(Array.isArray(data) ? data : []);
@@ -63,12 +64,12 @@ const FreelancerDash = ({ user, section }) => {
         .catch(err => console.error("❌ Req fetch error:", err));
 
       // Fetch Portfolio
-      fetch(`http://localhost:5000/api/portfolio/${user.id}`)
+      fetch(`${API_URL}/api/portfolio/${user.id}`)
         .then(res => res.json())
         .then(d => { if (Array.isArray(d)) setPortfolio(d); });
 
       // Fetch Orders & Calc Earnings
-      fetch(`http://localhost:5000/api/orders/freelancer/${user.id}`)
+      fetch(`${API_URL}/api/orders/freelancer/${user.id}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {
@@ -87,7 +88,7 @@ const FreelancerDash = ({ user, section }) => {
   // Fetch Profile for Modal
   useEffect(() => {
     if (viewProfileId) {
-      fetch(`http://localhost:5000/api/profile/${viewProfileId}`)
+      fetch(`${API_URL}/api/profile/${viewProfileId}`)
         .then(res => res.json())
         .then(data => setProfileData(data));
     }
@@ -96,7 +97,7 @@ const FreelancerDash = ({ user, section }) => {
   // Fetch Revision Feedback
   useEffect(() => {
     if (manageOrder && manageOrder.status === 'revision_requested') {
-      fetch(`http://localhost:5000/api/messages/${manageOrder.id}`)
+      fetch(`${API_URL}/api/messages/${manageOrder.id}`)
         .then(res => res.json())
         .then(msgs => {
           const revMsg = [...msgs].reverse().find(m => m.text.includes("⚠️ REVISION REQUESTED:"));
@@ -108,18 +109,18 @@ const FreelancerDash = ({ user, section }) => {
   // Actions
   const handleDeleteGig = async (gigId) => {
     if (!window.confirm("Are you sure you want to delete this gig?")) return;
-    await fetch(`http://localhost:5000/api/gigs/${gigId}`, { method: 'DELETE' });
+    await fetch(`${API_URL}/api/gigs/${gigId}`, { method: 'DELETE' });
     refreshData();
   };
 
   const handleDuplicate = async (gigId) => {
     if (!window.confirm("Duplicate this gig?")) return;
-    const res = await fetch(`http://localhost:5000/api/gigs/duplicate/${gigId}`, { method: 'POST' });
+    const res = await fetch(`${API_URL}/api/gigs/duplicate/${gigId}`, { method: 'POST' });
     if (res.ok) { alert("Gig Duplicated!"); refreshData(); }
   };
 
   const handleBidSubmit = async (bidData) => {
-    const res = await fetch('http://localhost:5000/api/bids', {
+    const res = await fetch(`${API_URL}/api/bids`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         requirement_id: bidModalReq.id,
@@ -141,7 +142,7 @@ const FreelancerDash = ({ user, section }) => {
     formData.append('sender_id', user.id);
     const typeLabel = deliveryType === 'draft' ? '📝 DRAFT' : '✅ FINAL DELIVERY';
     formData.append('text', `${typeLabel}: ${deliveryNote || "Here is the work file."}`);
-    await fetch('http://localhost:5000/api/orders/deliver', { method: 'POST', body: formData });
+    await fetch(`${API_URL}/api/orders/deliver`, { method: 'POST', body: formData });
     alert(`${typeLabel} Sent Successfully!`);
     setManageOrder(null); setDeliveryFile(null); setDeliveryNote(''); refreshData();
   };
@@ -372,7 +373,7 @@ const FreelancerDash = ({ user, section }) => {
 
   const handleDeletePortfolio = async (id) => {
     if (!confirm("Delete this project?")) return;
-    await fetch(`http://localhost:5000/api/portfolio/${id}`, { method: 'DELETE' });
+    await fetch(`${API_URL}/api/portfolio/${id}`, { method: 'DELETE' });
     refreshData();
   };
 

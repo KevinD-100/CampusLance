@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect, useRef } from 'react';
 import '../pages/Dashboard.css'; // Re-use existing CSS
 
@@ -9,7 +10,7 @@ const ChatWindow = ({ order, currentUser, onClose }) => {
 
   // Fetch Messages
   const fetchMessages = () => {
-    fetch(`http://localhost:5000/api/messages/${order.id}`)
+    fetch(`${API_URL}/api/messages/${order.id}`)
       .then(res => res.json())
       .then(data => {
         if(Array.isArray(data)) {
@@ -41,7 +42,7 @@ const ChatWindow = ({ order, currentUser, onClose }) => {
     setMessages(prev => [...prev, tempMsg]); // Optimistic Update
     setNewMessage(""); // Clear input immediately
 
-    await fetch('http://localhost:5000/api/messages', {
+    await fetch(`${API_URL}/api/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: order.id, sender_id: currentUser.id, text: tempMsg.text })

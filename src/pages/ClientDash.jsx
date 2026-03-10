@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Dashboard.css';
@@ -55,7 +56,7 @@ const ClientDash = ({ user, section }) => {
 
   const fetchLeaderboard = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/analytics/leaderboard');
+      const res = await fetch(`${API_URL}/api/analytics/leaderboard`);
       const data = await res.json();
       setLeaderboard(data);
     } catch (err) { console.error(err); }
@@ -66,7 +67,7 @@ const ClientDash = ({ user, section }) => {
     console.log("🤖 Fetching Recs for:", { title, requirements });
     setLoadingRecs(true);
     try {
-      const res = await fetch('http://localhost:5000/api/matchmaking', {
+      const res = await fetch(`${API_URL}/api/matchmaking`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requirements, title })
@@ -88,7 +89,7 @@ const ClientDash = ({ user, section }) => {
 
   const confirmHire = () => {
     const { job, bid } = hireDetails;
-    fetch('http://localhost:5000/api/orders/hire', {
+    fetch(`${API_URL}/api/orders/hire`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ requirement_id: job.id, client_id: user.id, freelancer_id: bid.freelancer_id, bid_id: bid.id, price: bid.price })
@@ -132,15 +133,15 @@ const ClientDash = ({ user, section }) => {
       setLoading(true);
       // FETCH GIGS WITH FILTERS
       const query = new URLSearchParams(filters).toString();
-      fetch(`http://localhost:5000/api/gigs?${query}`).then(res => res.json()).then(data => setGigs(data));
+      fetch(`${API_URL}/api/gigs?${query}`).then(res => res.json()).then(data => setGigs(data));
 
-      fetch(`http://localhost:5000/api/requirements/client/${user.id}`).then(res => res.json()).then(data => setMyJobs(data));
-      fetch(`http://localhost:5000/api/orders/client/${user.id}`)
+      fetch(`${API_URL}/api/requirements/client/${user.id}`).then(res => res.json()).then(data => setMyJobs(data));
+      fetch(`${API_URL}/api/orders/client/${user.id}`)
         .then(res => res.json())
         .then(data => { setOrders(data); setLoading(false); })
         .catch(err => console.error(err));
 
-      fetch(`http://localhost:5000/api/favorites/${user.id}`).then(res => res.json()).then(ids => setFavorites(ids));
+      fetch(`${API_URL}/api/favorites/${user.id}`).then(res => res.json()).then(ids => setFavorites(ids));
     }
   };
 
@@ -162,12 +163,12 @@ const ClientDash = ({ user, section }) => {
   useEffect(() => {
     if (viewProfileId) {
       // Fetch Profile Info
-      fetch(`http://localhost:5000/api/profile/${viewProfileId}`)
+      fetch(`${API_URL}/api/profile/${viewProfileId}`)
         .then(res => res.json())
         .then(data => setProfileData(data));
 
       // Fetch Portfolio
-      fetch(`http://localhost:5000/api/portfolio/${viewProfileId}`)
+      fetch(`${API_URL}/api/portfolio/${viewProfileId}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) setProfilePortfolio(data);
@@ -179,7 +180,7 @@ const ClientDash = ({ user, section }) => {
 
   // --- ACTIONS ---
   const toggleFavorite = async (targetId) => {
-    await fetch('http://localhost:5000/api/favorites', {
+    await fetch(`${API_URL}/api/favorites`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: user.id, target_id: targetId, fav_type: 'freelancer' })
     });
@@ -188,7 +189,7 @@ const ClientDash = ({ user, section }) => {
 
   const submitRating = async (e) => {
     e.preventDefault();
-    await fetch('http://localhost:5000/api/ratings', {
+    await fetch(`${API_URL}/api/ratings`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...ratingData, order_id: ratingOrder.id, client_id: user.id, freelancer_id: ratingOrder.freelancer_id })
     });
@@ -199,7 +200,7 @@ const ClientDash = ({ user, section }) => {
   const openReview = async (order) => {
     setReviewOrder(order);
     try {
-      const res = await fetch(`http://localhost:5000/api/messages/${order.id}`);
+      const res = await fetch(`${API_URL}/api/messages/${order.id}`);
       const msgs = await res.json();
       const deliveryMsg = [...msgs].reverse().find(m => m.text && m.text.includes("[FILE:"));
       if (deliveryMsg) {
@@ -223,7 +224,7 @@ const ClientDash = ({ user, section }) => {
       try {
         console.log("💳 Starting Payment Flow for Price:", reviewOrder.total_price);
         // 1. Create Razorpay Order
-        const resOrder = await fetch('http://localhost:5000/api/payment/create-order', {
+        const resOrder = await fetch(`${API_URL}/api/payment/create-order`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ amount: reviewOrder.total_price })
@@ -255,7 +256,7 @@ const ClientDash = ({ user, section }) => {
           handler: async (response) => {
             console.log("✅ Payment Success Response Received:", response);
             // 3. Verify Payment
-            const resVerify = await fetch('http://localhost:5000/api/payment/verify', {
+            const resVerify = await fetch(`${API_URL}/api/payment/verify`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(response)
@@ -265,7 +266,7 @@ const ClientDash = ({ user, section }) => {
             if (verifyData.status === 'success') {
               console.log("🎊 Payment Verified on Backend.");
               // 4. Finalize Review on Backend
-              await fetch('http://localhost:5000/api/orders/review', {
+              await fetch(`${API_URL}/api/orders/review`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ order_id: reviewOrder.id, client_id: user.id, status, feedback: revisionNote })
@@ -295,7 +296,7 @@ const ClientDash = ({ user, section }) => {
       }
     } else {
       // Logic for Revision Requested (No Payment Needed)
-      await fetch('http://localhost:5000/api/orders/review', {
+      await fetch(`${API_URL}/api/orders/review`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ order_id: reviewOrder.id, client_id: user.id, status, feedback: revisionNote })
@@ -329,7 +330,7 @@ const ClientDash = ({ user, section }) => {
   const JobPostsSection = () => {
     const [bidsMap, setBidsMap] = useState({});
     const hiredJobIds = orders.map(o => o.requirement_id);
-    const fetchBids = (jobId) => fetch(`http://localhost:5000/api/bids/job/${jobId}`).then(res => res.json()).then(data => setBidsMap(p => ({ ...p, [jobId]: data })));
+    const fetchBids = (jobId) => fetch(`${API_URL}/api/bids/job/${jobId}`).then(res => res.json()).then(data => setBidsMap(p => ({ ...p, [jobId]: data })));
 
     useEffect(() => { myJobs.forEach(j => fetchBids(j.id)); }, [myJobs]);
 

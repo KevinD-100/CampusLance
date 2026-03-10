@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import FreelancerDash from './FreelancerDash';
@@ -35,14 +36,14 @@ const Dashboard = () => {
       }
 
       // Fetch Notifications
-      fetch(`http://localhost:5000/api/notifications/${parsedUser.id}`)
+      fetch(`${API_URL}/api/notifications/${parsedUser.id}`)
         .then(res => res.json())
         .then(data => setNotifications(data));
 
       // 🔴 CHECK FOR CHAT INTENT
       if (location.state?.section === 'messages' && location.state?.orderId) {
         setCurrentSection('messages');
-        fetch(`http://localhost:5000/api/orders/single/${location.state.orderId}`)
+        fetch(`${API_URL}/api/orders/single/${location.state.orderId}`)
           .then(res => res.json())
           .then(orderData => setActiveChatOrder(orderData))
           .catch(err => console.error("Failed to load chat order", err));
@@ -79,7 +80,7 @@ const Dashboard = () => {
   const handleOpenNotifications = () => {
     setShowNotifDropdown(!showNotifDropdown);
     if (!showNotifDropdown && unreadCount > 0) {
-      fetch(`http://localhost:5000/api/notifications/read/all/${user.id}`, { method: 'PUT' });
+      fetch(`${API_URL}/api/notifications/read/all/${user.id}`, { method: 'PUT' });
       setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
     }
   };
@@ -266,7 +267,7 @@ const Dashboard = () => {
                 <button className="btn-small" style={{ background: 'transparent', color: '#E53E3E', border: '1px solid #E53E3E' }} onClick={async () => {
                   if (window.confirm("🚨 WARNING: Are you strictly sure you want to permanently delete your account? All gigs, orders, and history will be lost. This CANNOT be undone.")) {
                     try {
-                      const res = await fetch(`http://localhost:5000/api/users/${user.id}`, { method: 'DELETE' });
+                      const res = await fetch(`${API_URL}/api/users/${user.id}`, { method: 'DELETE' });
                       if (res.ok) {
                         alert("Account successfully deleted. We're sorry to see you go.");
                         handleLogout();

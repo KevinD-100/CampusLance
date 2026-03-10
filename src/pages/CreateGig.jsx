@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Forms.css';
@@ -45,7 +46,7 @@ const CreateGig = () => {
     if (image) formData.append('image', image);
 
     try {
-      const response = await fetch('http://localhost:5000/api/gigs', {
+      const response = await fetch(`${API_URL}/api/gigs`, {
         method: 'POST',
         body: formData,
       });

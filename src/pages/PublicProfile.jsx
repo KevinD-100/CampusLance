@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import './Dashboard.css';
@@ -10,7 +11,7 @@ const PublicProfile = () => {
 
     useEffect(() => {
         // Fetch public profile data
-        fetch(`http://localhost:5000/api/profile/${id}`)
+        fetch(`${API_URL}/api/profile/${id}`)
             .then(res => res.json())
             .then(data => {
                 setProfile(data);

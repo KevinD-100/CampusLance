@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Forms.css'; // Reusing your existing form styles
@@ -19,7 +20,7 @@ const Profile = () => {
   // Load Data
   useEffect(() => {
     if (user?.id) {
-        fetch(`http://localhost:5000/api/profile/${user.id}`)
+        fetch(`${API_URL}/api/profile/${user.id}`)
             .then(res => res.json())
             .then(data => {
                 setFormData({
@@ -44,7 +45,7 @@ const Profile = () => {
     if (selectedFile) data.append('profilePic', selectedFile);
 
     try {
-        const res = await fetch(`http://localhost:5000/api/profile/${user.id}`, {
+        const res = await fetch(`${API_URL}/api/profile/${user.id}`, {
             method: 'PUT',
             body: data
         });

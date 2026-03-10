@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import './Forms.css';
@@ -10,7 +11,7 @@ const EditGig = () => {
 
   // Fetch Existing Data
   useEffect(() => {
-    fetch(`http://localhost:5000/api/gigs/single/${id}`)
+    fetch(`${API_URL}/api/gigs/single/${id}`)
       .then(res => res.json())
       .then(data => {
         // Map DB fields to state
@@ -32,7 +33,7 @@ const EditGig = () => {
     formData.append('delivery_days', gig.deliveryDays);
     if (image) formData.append('image', image);
 
-    const res = await fetch(`http://localhost:5000/api/gigs/${id}`, {
+    const res = await fetch(`${API_URL}/api/gigs/${id}`, {
         method: 'PUT',
         body: formData
     });

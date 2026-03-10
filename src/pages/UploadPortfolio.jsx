@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './Forms.css';
@@ -24,7 +25,7 @@ const UploadPortfolio = () => {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/portfolio', { method: 'POST', body: data });
+      const res = await fetch(`${API_URL}/api/portfolio`, { method: 'POST', body: data });
       const result = await res.json();
 
       if (!res.ok) {

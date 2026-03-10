@@ -1,3 +1,4 @@
+import API_URL from '../config';
 import React, { useState, useEffect } from 'react';
 import './Dashboard.css';
 
@@ -15,20 +16,20 @@ const AdminDash = ({ user }) => {
 
   const refreshData = () => {
     // Stats
-    fetch('http://localhost:5000/api/admin/stats').then(res => res.json()).then(data => setStats(data));
-    fetch('http://localhost:5000/api/admin/sprint-summary').then(res => res.json()).then(data => setSprintData(data));
+    fetch(`${API_URL}/api/admin/stats`).then(res => res.json()).then(data => setStats(data));
+    fetch(`${API_URL}/api/admin/sprint-summary`).then(res => res.json()).then(data => setSprintData(data));
 
     // Users
-    fetch('http://localhost:5000/api/admin/users').then(res => res.json()).then(data => setUsersList(data));
+    fetch(`${API_URL}/api/admin/users`).then(res => res.json()).then(data => setUsersList(data));
 
     // Disputes
-    fetch('http://localhost:5000/api/admin/disputes').then(res => res.json()).then(data => setDisputes(data));
+    fetch(`${API_URL}/api/admin/disputes`).then(res => res.json()).then(data => setDisputes(data));
 
     // Categories
-    fetch('http://localhost:5000/api/admin/categories').then(res => res.json()).then(data => setCategories(data));
+    fetch(`${API_URL}/api/admin/categories`).then(res => res.json()).then(data => setCategories(data));
 
     // Timeline
-    fetch('http://localhost:5000/api/admin/timeline').then(res => res.json()).then(data => setTimeline(data));
+    fetch(`${API_URL}/api/admin/timeline`).then(res => res.json()).then(data => setTimeline(data));
   };
 
   useEffect(() => { refreshData(); }, []);
@@ -37,7 +38,7 @@ const AdminDash = ({ user }) => {
   const toggleUserStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
     if (!window.confirm(`Mark user as ${newStatus}?`)) return;
-    await fetch(`http://localhost:5000/api/admin/user/status/${id}`, {
+    await fetch(`${API_URL}/api/admin/user/status/${id}`, {
       method: 'PUT', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: newStatus })
     });
@@ -46,7 +47,7 @@ const AdminDash = ({ user }) => {
 
   const resolveDispute = async (disputeId, orderId, decision) => {
     if (!window.confirm(`Resolve as: ${decision}?`)) return;
-    await fetch('http://localhost:5000/api/admin/dispute/resolve', {
+    await fetch(`${API_URL}/api/admin/dispute/resolve`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ dispute_id: disputeId, order_id: orderId, resolution: decision })
     });
@@ -57,7 +58,7 @@ const AdminDash = ({ user }) => {
   const addCategory = async (e) => {
     e.preventDefault();
     if (!newCat) return;
-    await fetch('http://localhost:5000/api/admin/categories', {
+    await fetch(`${API_URL}/api/admin/categories`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newCat })
     });
