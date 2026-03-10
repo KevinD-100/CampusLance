@@ -10,8 +10,21 @@ const crypto = require('crypto');
 const app = express();
 
 app.use(cors({
-    origin: "https://campus-lance.vercel.app"
+    origin: [
+        "https://campus-lance-eight.vercel.app",
+        "http://localhost:5173"
+    ],
+    credentials: true
 }));
+
+// If you want to allow ANY Vercel preview URL, you can use a fallback:
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin && origin.includes('vercel.app')) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+    }
+    next();
+});
 app.use(express.json());
 // 🟢 FIX: Allow Razorpay Popups to communicate
 app.use((req, res, next) => {
