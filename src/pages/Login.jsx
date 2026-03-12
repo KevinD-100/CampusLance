@@ -76,8 +76,9 @@ const Login = () => {
       const data = await res.json();
 
       if (res.ok) {
+        setServerMsg({ type: 'success', text: "✅ Login Successful! Redirecting..." });
         localStorage.setItem('campusUser', JSON.stringify(data.user));
-        navigate('/dashboard');
+        setTimeout(() => navigate('/dashboard'), 700);
       } else {
         setServerMsg({ type: 'error', text: data.error || "Login Failed" });
       }
@@ -96,8 +97,9 @@ const Login = () => {
       });
       const data = await res.json();
       if (res.ok) {
+        setServerMsg({ type: 'success', text: "✅ Google Login Successful! Redirecting..." });
         localStorage.setItem('campusUser', JSON.stringify(data.user));
-        navigate('/dashboard');
+        setTimeout(() => navigate('/dashboard'), 700);
       } else {
         setServerMsg({ type: 'error', text: data.error || "Google Login Failed" });
       }
