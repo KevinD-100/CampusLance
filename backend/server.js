@@ -167,7 +167,8 @@ const notify = (userId, type, message) => {
     });
 };
 
-// ================= ROUTES ================= //
+// --- SYSTEM ---
+app.get('/ping', (req, res) => res.status(200).send('pong'));
 
 // --- AUTH ---
 app.post('/api/auth/google', (req, res) => {

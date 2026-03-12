@@ -76,10 +76,8 @@ const Login = () => {
       const data = await res.json();
 
       if (res.ok) {
-        setServerMsg({ type: 'success', text: "✅ Login Successful! Redirecting..." });
         localStorage.setItem('campusUser', JSON.stringify(data.user));
-        // Slight delay so user sees the success message
-        setTimeout(() => navigate('/dashboard'), 1000);
+        navigate('/dashboard');
       } else {
         setServerMsg({ type: 'error', text: data.error || "Login Failed" });
       }
@@ -98,14 +96,13 @@ const Login = () => {
       });
       const data = await res.json();
       if (res.ok) {
-        setServerMsg({ type: 'success', text: "✅ Google Login Successful!" });
         localStorage.setItem('campusUser', JSON.stringify(data.user));
-        setTimeout(() => navigate('/dashboard'), 1000);
+        navigate('/dashboard');
       } else {
         setServerMsg({ type: 'error', text: data.error || "Google Login Failed" });
       }
     } catch (error) {
-      setServerMsg({ type: 'error', text: "Network Error: Backend not reachable." });
+      setServerMsg({ type: 'error', text: "Network Error: Server might be waking up (Render free tier). Please wait a few seconds and try again." });
     }
   };
 
